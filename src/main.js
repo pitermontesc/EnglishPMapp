@@ -14,7 +14,7 @@ import "./styles.css";
 
 import { Capacitor } from "@capacitor/core";
 import { openStore, store, getSetting, setSettings } from "./platform/storage.js";
-import { createDictation } from "./platform/speech.js";
+import { createDictation, diag } from "./platform/speech.js";
 import { speak, stop as stopSpeech, ttsAvailable } from "./platform/tts.js";
 import { createAI, MODELS, DEFAULT_MODEL } from "./platform/ai.js";
 import { saveTextFile } from "./platform/files.js";
@@ -134,12 +134,14 @@ function startRec(o) {
     rec.timers.quiet = setTimeout(() => stopRec("auto"), 10000 * pauseFactor()); // nothing said at all
     rec.timers.max = setTimeout(() => stopRec("auto"), (10000 + o.target.length * 1200) * pauseFactor());
   }
+  diag("app start take", o.key, o.target ? o.target.join(" ") : "");
   dict.start({ language: "en" }).catch((e) => finishRec(e && e.code));
   return true;
 }
 function stopRec(how) {
   if (!rec) return;
   rec.how = how; rec.stopping = true;
+  diag("app stop take", how, "heard so far:", heardSoFar());
   Object.values(rec.timers).forEach(clearTimeout);
   dict.stop().catch(() => {});
 }
@@ -161,6 +163,7 @@ function onHeard() {
   const finished = last && last.ok && heard[heard.length - 1] === rec.target[rec.target.length - 1] && coverage >= 0.75;
   clearTimeout(rec.timers.silence);
   const wait = (finished ? 1000 : coverage >= 0.5 ? 2400 : 3400) * pauseFactor();
+  diag("app heard", text, { finished, coverage: +coverage.toFixed(2), wait });
   rec.timers.silence = setTimeout(() => stopRec("auto"), wait);
 }
 function finishRec(reason) {
@@ -171,6 +174,7 @@ function finishRec(reason) {
       && rec.restarts < 8 && Date.now() < rec.deadline) {
     const r = rec;
     r.buf = (r.buf + " " + r.interim).trim(); r.interim = ""; r.restarts++;
+    diag("app RESTART recognizer (engine closed by itself)", { reason, buf: r.buf });
     dict.start({ language: "en" }).catch((e) => { if (rec === r) { r.stopping = true; finishRec(e && e.code); } });
     return;
   }
@@ -191,6 +195,7 @@ function finishRec(reason) {
     return;
   }
   status("");
+  diag("app grade", text);
   r.done(text, r.how);
 }
 // Simple start/stop toggle used by the word rows and Speak freely.
@@ -754,6 +759,12 @@ async function init() {
   if (dict) wireDictation();
   loadFromStore();
   route();
+  if (import.meta.env.VITE_DIAG === "1") {
+    prefs.handsFree = false; prefs.listenFirst = false;
+    let n = 0;
+    const next = () => { if (n >= 4) { diag("diag run done"); return; } diag("auto read sentence " + (n + 1)); readFrom(n++); };
+    setTimeout(() => { next(); setTimeout(function loop() { if (n < 4) { if (!rec && !flow) { next(); } setTimeout(loop, 3000); } }, 4000); }, 6000);
+  }
   if (!dict && $("status").hidden) status(micHelp() + " Listening and exercises work here.", { key: "nomic" });
 
   if (PLATFORM === "web" && "serviceWorker" in navigator && import.meta.env.PROD) {
