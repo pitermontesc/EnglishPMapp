@@ -52,6 +52,30 @@ function align(target, heard) {
   }
   return res;
 }
+// Same, for speech still in progress: the heard words are matched against the start of the
+// sentence only, so words not read yet are "pending" instead of pulling the alignment apart.
+function alignPrefix(target, heard) {
+  const n = target.length, m = heard.length, dp = [];
+  let i, j;
+  for (i = 0; i <= n; i++) { dp.push(new Array(m + 1)); dp[i][0] = i; }
+  for (j = 0; j <= m; j++) dp[0][j] = j;
+  for (i = 1; i <= n; i++) for (j = 1; j <= m; j++) {
+    const c = target[i - 1] === heard[j - 1] ? 0 : 1;
+    dp[i][j] = Math.min(dp[i - 1][j - 1] + c, dp[i - 1][j] + 1, dp[i][j - 1] + 1);
+  }
+  let end = 0;
+  for (i = 1; i <= n; i++) if (dp[i][m] <= dp[end][m]) end = i;
+  const res = new Array(n);
+  for (i = end; i < n; i++) res[i] = { ok: false, heard: "", pending: true };
+  i = end; j = m;
+  while (i > 0) {
+    if (j > 0 && target[i - 1] === heard[j - 1] && dp[i][j] === dp[i - 1][j - 1]) { res[i - 1] = { ok: true }; i--; j--; }
+    else if (j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) { res[i - 1] = { ok: false, heard: heard[j - 1] }; i--; j--; }
+    else if (dp[i][j] === dp[i - 1][j] + 1) { res[i - 1] = { ok: false, heard: "" }; i--; }
+    else { j--; }
+  }
+  return res;
+}
 
 // ---------- state ----------
 let dict = null, sample = null;
@@ -125,7 +149,7 @@ function startRec(o) {
   if (!dict) { status(micHelp(), { key: "nomic" }); return false; }
   if (rec) return false; // the previous take is still closing
   stopAudio();
-  rec = Object.assign({ buf: "", interim: "", how: "auto", spoke: false, stopping: false, restarts: 0, timers: {} }, o);
+  rec = Object.assign({ buf: "", interim: "", how: "auto", spoke: false, stopping: false, restarts: 0, okSet: new Set(), bestOk: -1, bestText: "", timers: {} }, o);
   rec.deadline = Date.now() + (10000 + (o.target ? o.target.length : 0) * 1200) * pauseFactor();
   if (o.onRecState) o.onRecState(true);
   else { rec.label = o.btn.innerHTML; o.btn.textContent = "Stop"; o.btn.classList.add("rec"); }
@@ -154,9 +178,16 @@ function onHeard() {
   const text = heardSoFar();
   if (rec.onLive) rec.onLive(text);
   else if (rec.live) rec.live.textContent = text || "Listening…";
+  if (rec.target && text) {
+    let okCount = 0;
+    alignPrefix(rec.target, words(text)).forEach((r, i) => { if (r.ok) { rec.okSet.add(i); okCount++; } });
+    if (okCount >= rec.bestOk) { rec.bestOk = okCount; rec.bestText = text; }
+  }
   if (!rec.target || !text || rec.stopping) return; // results that arrive while closing only update the text
   if (!rec.spoke) { rec.spoke = true; clearTimeout(rec.timers.quiet); }
-  const heard = words(text), res = align(rec.target, heard);
+  const heard = words(text), res = alignPrefix(rec.target, heard);
+  // Apple re-ranks its text when the take ends and sometimes drops or changes a word it had
+  // already recognized (most often the last one). Keep every word recognized at any moment.
   const last = res[res.length - 1];
   const coverage = heard.length / rec.target.length;
   // "Finished" only when the sentence's last word is also the last word heard.
@@ -195,8 +226,14 @@ function finishRec(reason) {
     return;
   }
   status("");
-  diag("app grade", text);
-  r.done(text, r.how);
+  // Show and grade Apple's most complete version of the take when the final text lost words.
+  let shown = text;
+  if (r.target && r.bestText) {
+    const finalOk = align(r.target, words(text)).filter((x) => x.ok).length;
+    if (r.bestOk > finalOk) shown = r.bestText;
+  }
+  diag("app grade", shown, shown !== text ? "(final was: " + text + ")" : "");
+  r.done(shown, r.how, Array.from(r.okSet));
 }
 // Simple start/stop toggle used by the word rows and Speak freely.
 function toggleRec(o) {
@@ -244,7 +281,7 @@ function renderLesson() {
     li._p = p; li._score = score; li._live = live;
     box.appendChild(li);
     const prev = session.reads[idx];
-    if (prev) paintSentence(li, text, prev.heard);
+    if (prev) paintSentence(li, text, prev.heard, prev.ok);
   });
   const firstUnread = (lesson.sentences || []).findIndex((_, i) => !session.reads[i]);
   select(firstUnread < 0 ? 0 : firstUnread, { scroll: false });
@@ -312,7 +349,7 @@ async function readFrom(idx, id) {
     key: "s" + at, btn: $("r-read"), live: li._live, target,
     onRecState: (on) => setReadButton(on ? "rec" : "idle"),
     onLive: (heard) => liveSentence(li, target, heard),
-    done: (heard, how) => { gradeSentence(at, heard); afterSentence(at, id, how); },
+    done: (heard, how, okIdx) => { gradeSentence(at, heard, okIdx); afterSentence(at, id, how); },
     onEmpty: () => { clearLive(li); if (flowAlive(id)) endFlow(); },
   });
 }
@@ -348,7 +385,7 @@ function go(step) { if (rec) stopRec("cancel"); endFlow(); select(active + step)
 function tokensOf(li) { return Array.from(li._p.querySelectorAll(".tok")); }
 // Karaoke feedback while speaking: words already heard turn green, the next one is underlined.
 function liveSentence(li, target, heardText) {
-  const res = align(target, words(heardText));
+  const res = alignPrefix(target, words(heardText));
   let k = 0, lastOk = -1;
   const toks = tokensOf(li);
   toks.forEach((sp, ti) => {
@@ -363,14 +400,17 @@ function liveSentence(li, target, heardText) {
   li._live.textContent = heardText || "Listening…";
 }
 function clearLive(li) { tokensOf(li).forEach((sp) => sp.classList.remove("live-ok", "next")); }
-function paintSentence(li, text, heardText) {
+// A word counts as understood if the final text has it, or if it was recognized at some
+// moment during the take (okIdx: positions in the sentence).
+function paintSentence(li, text, heardText, okIdx) {
   const target = words(text), res = align(target, words(heardText)), missed = [];
+  const seen = new Set(okIdx || []);
   let k = 0, hit = 0;
   tokensOf(li).forEach((sp) => {
     sp.classList.remove("live-ok", "next");
     const parts = sp.dataset.n ? sp.dataset.n.split(" ") : []; if (!parts.length) return;
     let ok = true;
-    parts.forEach((w) => { const r = res[k++]; if (r && r.ok) hit++; else { ok = false; missed.push({ word: w, heard: r ? r.heard : "" }); } });
+    parts.forEach((w) => { const at = k++, r = res[at]; if ((r && r.ok) || seen.has(at)) hit++; else { ok = false; missed.push({ word: w, heard: r ? r.heard : "" }); } });
     sp.classList.remove("ok", "miss"); sp.classList.add(ok ? "ok" : "miss");
   });
   const pct = target.length ? Math.round(100 * hit / target.length) : 0;
@@ -379,10 +419,10 @@ function paintSentence(li, text, heardText) {
   li._live.textContent = ""; li._live.append("Heard: ", el("b", "", heardText));
   return { hit, total: target.length, missed };
 }
-function gradeSentence(idx, heardText) {
+function gradeSentence(idx, heardText, okIdx) {
   const li = items()[idx], text = lesson.sentences[idx];
-  const g = paintSentence(li, text, heardText);
-  session.reads[idx] = { heard: heardText, hit: g.hit, total: g.total };
+  const g = paintSentence(li, text, heardText, okIdx);
+  session.reads[idx] = { heard: heardText, hit: g.hit, total: g.total, ok: okIdx || [] };
   const touched = [];
   g.missed.forEach((m) => {
     if (m.word.length < 3) return;
