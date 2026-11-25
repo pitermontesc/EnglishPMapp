@@ -152,7 +152,7 @@ function onHeard() {
   const text = heardSoFar();
   if (rec.onLive) rec.onLive(text);
   else if (rec.live) rec.live.textContent = text || "Listening…";
-  if (!rec.target || !text) return;
+  if (!rec.target || !text || rec.stopping) return; // results that arrive while closing only update the text
   if (!rec.spoke) { rec.spoke = true; clearTimeout(rec.timers.quiet); }
   const heard = words(text), res = align(rec.target, heard);
   const last = res[res.length - 1];

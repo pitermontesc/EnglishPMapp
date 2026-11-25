@@ -64,8 +64,9 @@ async function nativeDictation() {
     },
     async stop() {
       try { await SpeechRecognition.stop(); } catch (e) { /* already stopped */ }
-      // If the recognizer never reports "stopped", close the take anyway.
-      guard = setTimeout(finish, 1500);
+      // After stop() Apple re-checks the audio and sends its final result, often with the
+      // last word, up to 2 s later (the plugin's own grace period). Wait past that.
+      guard = setTimeout(finish, 3000);
     },
   });
 }
