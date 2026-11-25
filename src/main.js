@@ -159,7 +159,7 @@ function startRec(o) {
     rec.timers.max = setTimeout(() => stopRec("auto"), (10000 + o.target.length * 1200) * pauseFactor());
   }
   diag("app start take", o.key, o.target ? o.target.join(" ") : "");
-  dict.start({ language: "en" }).catch((e) => finishRec(e && e.code));
+  dict.start({ language: "en", phrases: o.phrases }).catch((e) => finishRec(e && e.code));
   return true;
 }
 function stopRec(how) {
@@ -172,6 +172,14 @@ function stopRec(how) {
 // How long the microphone waits in silence before closing the take (Settings → Reading).
 const PAUSES = { short: 0.6, normal: 1, long: 1.6 };
 function pauseFactor() { return PAUSES[getSetting("pause", "long")] || 1; }
+// The sentence and its words, so Apple's recognizer expects them (Settings → Reading).
+function expectedPhrases(text) {
+  if (!getSetting("expectWords", true)) return [];
+  const clean = (w) => w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, "");
+  const list = [String(text).replace(/[“”"]/g, "").trim()];
+  String(text).split(/[\s—–/]+/).map(clean).forEach((w) => { if (w && list.indexOf(w) < 0) list.push(w); });
+  return list;
+}
 function heardSoFar() { return rec ? (rec.buf + " " + rec.interim).trim() : ""; }
 function onHeard() {
   if (!rec) return;
@@ -206,7 +214,7 @@ function finishRec(reason) {
     const r = rec;
     r.buf = (r.buf + " " + r.interim).trim(); r.interim = ""; r.restarts++;
     diag("app RESTART recognizer (engine closed by itself)", { reason, buf: r.buf });
-    dict.start({ language: "en" }).catch((e) => { if (rec === r) { r.stopping = true; finishRec(e && e.code); } });
+    dict.start({ language: "en", phrases: r.phrases }).catch((e) => { if (rec === r) { r.stopping = true; finishRec(e && e.code); } });
     return;
   }
   const r = rec; rec = null;
@@ -346,7 +354,7 @@ async function readFrom(idx, id) {
   }
   const li = items()[active], target = words(text), at = active;
   startRec({
-    key: "s" + at, btn: $("r-read"), live: li._live, target,
+    key: "s" + at, btn: $("r-read"), live: li._live, target, phrases: expectedPhrases(text),
     onRecState: (on) => setReadButton(on ? "rec" : "idle"),
     onLive: (heard) => liveSentence(li, target, heard),
     done: (heard, how, okIdx) => { gradeSentence(at, heard, okIdx); afterSentence(at, id, how); },
@@ -717,6 +725,7 @@ function renderSettings() {
   $("set-key").value = getSetting("apiKey", "");
   $("set-auto").checked = getSetting("autoLesson", true);
   $("set-pause").value = getSetting("pause", "long");
+  $("set-expect").checked = getSetting("expectWords", true);
   const info = $("dev-info"); info.textContent = "";
   const platformName = { web: "Web browser", ios: "Mac app" }[PLATFORM] || PLATFORM;
   [
@@ -728,6 +737,7 @@ function renderSettings() {
 }
 function wireSettings() {
   $("set-pause").onchange = () => setSettings({ pause: $("set-pause").value });
+  $("set-expect").onchange = () => setSettings({ expectWords: $("set-expect").checked });
   $("set-save").onclick = async () => {
     await setSettings({ apiKey: $("set-key").value.trim(), model: $("set-model").value, autoLesson: $("set-auto").checked });
     refreshAI(); renderSettings(); updateAIButtons();

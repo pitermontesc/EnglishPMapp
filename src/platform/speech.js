@@ -64,20 +64,23 @@ async function nativeDictation() {
   });
 
   return Object.assign(api, {
-    async start() {
+    // opts.phrases: words and phrases the learner is expected to say. Apple's recognizer
+    // favors them (contextualStrings), so a word said quietly at the end is still recognized.
+    async start(opts = {}) {
       diag("native start: checking permission");
       let perm = await SpeechRecognition.checkPermissions();
       diag("native start: permission", perm);
       if (perm.speechRecognition !== "granted") perm = await SpeechRecognition.requestPermissions();
       if (perm.speechRecognition !== "granted") throw { code: "not_granted" };
       text = ""; reason = ""; active = true;
-      diag("native start: calling plugin start");
+      diag("native start: calling plugin start", { expected: (opts.phrases || []).length });
       try {
         await SpeechRecognition.start({
           language: "en-US",
           partialResults: true,
           popup: false,
           addPunctuation: false,
+          contextualStrings: opts.phrases || [],
         });
         diag("native start: plugin start resolved");
       } catch (e) { active = false; diag("native start failed", e && e.code, e && e.message); throw { code: (e && e.code) || "unavailable" }; }
