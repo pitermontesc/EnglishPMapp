@@ -32,7 +32,15 @@ npm run build      # genera dist/
 npm run preview    # prueba la versión compilada
 ```
 
-Sube `dist/` a Netlify, Vercel, GitHub Pages, Cloudflare Pages, etc. Necesita HTTPS para el micrófono.
+**Publicada en GitHub Pages:** https://pitermontesc.github.io/EnglishPMapp/
+
+Para publicar una nueva versión:
+
+```bash
+npm run deploy:web   # compila y reemplaza la rama gh-pages; el sitio se actualiza en 1 o 2 minutos
+```
+
+También puedes subir `dist/` a Netlify, Vercel, Cloudflare Pages, etc. Necesita HTTPS para el micrófono.
 Para instalarla: en Chrome/Edge, botón "Instalar" en la barra de direcciones; en Safari para Mac,
 Archivo → "Añadir al Dock"; en iPhone, Compartir → "Añadir a pantalla de inicio".
 

@@ -11,7 +11,8 @@
     "sync": "vite build && cap sync",
     "ios": "vite build && cap sync ios && cap open ios",
     "android": "vite build && cap sync android && cap open android",
-    "mac": "vite build && cap sync ios && cap open ios"
+    "mac": "vite build && cap sync ios && cap open ios",
+    "deploy:web": "sh scripts/deploy-pages.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.14.0",
