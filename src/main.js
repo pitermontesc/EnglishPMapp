@@ -1,4 +1,4 @@
-// Daily English: standalone app for web, Mac, iOS and Android.
+// Daily English: standalone app for Chrome (web) and Mac.
 // Same lesson flow as the Claude artifact (artifact/index.html), with the artifact's
 // runtime capabilities replaced by platform adapters in ./platform.
 import "@fontsource/ibm-plex-sans/400.css";
@@ -27,7 +27,7 @@ function dateKey(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-"
 function addDays(key, n) { const p = key.split("-"); const d = new Date(+p[0], +p[1] - 1, +p[2]); d.setDate(d.getDate() + n); return dateKey(d); }
 const TODAY = dateKey(new Date());
 const INTERVALS = [1, 3, 7, 14, 30];
-const PLATFORM = Capacitor.getPlatform(); // "web" | "ios" | "android"
+const PLATFORM = Capacitor.getPlatform(); // "web" or "ios" (the Mac app is the iOS build running on Apple Silicon)
 
 // ---------- pure text helpers ----------
 function norm(w) { return String(w).toLowerCase().replace(/[‘’]/g, "'").replace(/[^a-z0-9']/g, "").replace(/^'+|'+$/g, ""); }
@@ -84,7 +84,7 @@ function stopAudio() { stopSpeech(); }
 
 // ---------- microphone ----------
 function micHelp() {
-  if (PLATFORM === "web") return "Reading aloud needs speech recognition: open the app in Chrome, Edge or Safari, or install the Mac, iPhone or Android app.";
+  if (PLATFORM === "web") return "Reading aloud needs speech recognition: open the app in Google Chrome, or use the Mac app.";
   return "Speech recognition is not available on this device. Check that dictation is enabled in the system settings.";
 }
 function toggleRec(o) {
@@ -435,7 +435,7 @@ function renderSettings() {
   $("set-key").value = getSetting("apiKey", "");
   $("set-auto").checked = getSetting("autoLesson", true);
   const info = $("dev-info"); info.textContent = "";
-  const platformName = { web: "Web browser", ios: navigator.userAgent.includes("Macintosh") ? "Mac (iPad app)" : "iPhone / iPad", android: "Android" }[PLATFORM] || PLATFORM;
+  const platformName = { web: "Web browser", ios: "Mac app" }[PLATFORM] || PLATFORM;
   [
     "Platform: " + platformName,
     "Microphone (speech recognition): " + (dict ? "available" : "not available"),

@@ -1,7 +1,6 @@
 // Speech-to-text with one interface for every platform:
 //   start() / stop(), and callbacks onFinal({text}), onPartial({text}), onState({state:"idle", reason}).
-// Native apps use the OS recognizer (Apple Speech on iOS and Mac, Google on Android).
-// The web build uses the Web Speech API (Chrome, Edge, Safari).
+// The Mac app uses Apple's speech recognizer; the web build uses Chrome's Web Speech API.
 import { Capacitor } from "@capacitor/core";
 import { SpeechRecognition } from "@capgo/capacitor-speech-recognition";
 
@@ -60,8 +59,6 @@ async function nativeDictation() {
           partialResults: true,
           popup: false,
           addPunctuation: false,
-          // Android 13+: keep listening through pauses until Stop is pressed.
-          keepListeningMs: Capacitor.getPlatform() === "android" ? 120000 : undefined,
         });
       } catch (e) { active = false; throw { code: (e && e.code) || "unavailable" }; }
     },

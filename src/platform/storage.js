@@ -1,5 +1,5 @@
 // Local storage for lessons, sessions, words and vocab.
-// Native apps (iOS, Mac, Android) use Capacitor Preferences, which the OS does not purge.
+// The Mac app uses Capacitor Preferences, which the OS does not purge.
 // The web build uses localStorage. Each collection is kept as one JSON map in memory
 // and written back whole on every change; the data set is small (hundreds of docs).
 import { Capacitor } from "@capacitor/core";

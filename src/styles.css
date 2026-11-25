@@ -114,7 +114,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* ---------- additions for the standalone apps ---------- */
 html { -webkit-text-size-adjust: 100%; }
 body { min-height: 100vh; -webkit-tap-highlight-color: transparent; }
-/* Respect the notch, the home indicator and the Android status bar. */
+/* Respect window insets (safe areas) when installed as an app. */
 .wrap { padding-top: calc(20px + env(safe-area-inset-top)); padding-bottom: calc(64px + env(safe-area-inset-bottom)); padding-left: calc(16px + env(safe-area-inset-left)); padding-right: calc(16px + env(safe-area-inset-right)); }
 nav.tabs { overflow-x: auto; scrollbar-width: none; }
 nav.tabs::-webkit-scrollbar { display: none; }

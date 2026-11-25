@@ -3,34 +3,26 @@
 App de práctica diaria de inglés: lectura en voz alta con evaluación de pronunciación,
 vocabulario con repaso espaciado, ejercicios y feedback al hablar.
 
-Un solo código web que funciona en:
+Por ahora funciona en dos sitios:
 
 | Plataforma | Cómo se ejecuta |
 |---|---|
-| **Web** (cualquier navegador) | `npm run build` → sube `dist/` a cualquier hosting estático. Se puede instalar como app (PWA). |
-| **Mac** (Apple Silicon) | El proyecto iOS corre en Mac como app nativa ("Designed for iPad"). |
-| **iPhone / iPad** | Proyecto Xcode en `ios/` (Capacitor). |
-| **Android** | Proyecto Android Studio en `android/` (Capacitor). |
+| **Chrome** (web) | https://pitermontesc.github.io/EnglishPMapp/ · se puede instalar como app desde Chrome. |
+| **Mac** (Apple Silicon) | App nativa: el proyecto de Xcode en `ios/` corre en Mac como "Designed for iPad". |
 
 ## Requisitos
 
 - Node.js 20 o superior
-- **Mac / iOS:** Xcode (App Store). La primera vez: `sudo xcode-select -s /Applications/Xcode.app`.
-- **Android:** Android Studio (incluye el SDK y Java).
+- **Mac:** Xcode (App Store). La primera vez: `sudo xcode-select -s /Applications/Xcode.app`.
 
 ## Empezar
 
 ```bash
 npm install
-npm run dev        # versión web en http://localhost:5173
+npm run dev        # versión web en http://localhost:5173 (ábrela en Chrome)
 ```
 
-### Web
-
-```bash
-npm run build      # genera dist/
-npm run preview    # prueba la versión compilada
-```
+### Chrome (web)
 
 **Publicada en GitHub Pages:** https://pitermontesc.github.io/EnglishPMapp/
 
@@ -40,9 +32,8 @@ Para publicar una nueva versión:
 npm run deploy:web   # compila y reemplaza la rama gh-pages; el sitio se actualiza en 1 o 2 minutos
 ```
 
-También puedes subir `dist/` a Netlify, Vercel, Cloudflare Pages, etc. Necesita HTTPS para el micrófono.
-Para instalarla: en Chrome/Edge, botón "Instalar" en la barra de direcciones; en Safari para Mac,
-Archivo → "Añadir al Dock"; en iPhone, Compartir → "Añadir a pantalla de inicio".
+Para instalarla como app en el Mac: abre el enlace en Chrome y pulsa el botón "Instalar" en la barra de direcciones.
+El micrófono de la versión web usa el reconocimiento de voz de Chrome, que necesita conexión a internet.
 
 ### Mac
 
@@ -53,27 +44,11 @@ npm run mac        # compila, sincroniza y abre Xcode
 En Xcode elige el destino **My Mac (Designed for iPad)** y pulsa ▶︎. En Signing & Capabilities
 selecciona tu equipo (Team); con una cuenta de Apple gratuita basta para tu propio Mac.
 
-### iPhone / iPad
-
-```bash
-npm run ios
-```
-
-Conecta el iPhone, elígelo como destino en Xcode y pulsa ▶︎.
-
-### Android
-
-```bash
-npm run android
-```
-
-En Android Studio espera a que termine Gradle y pulsa ▶︎ con un teléfono conectado (depuración USB
-activada) o un emulador.
-
 ### Después de cambiar el código
 
 ```bash
-npm run sync       # compila la web y copia los cambios a ios/ y android/
+npm run sync         # compila la web y copia los cambios a la app de Mac
+npm run deploy:web   # publica los cambios en la web
 ```
 
 ## Claude (historias, coaching y feedback)
@@ -91,10 +66,10 @@ No publiques la versión web con una clave escrita en el código: cada persona p
 
 ## Cómo funciona cada pieza
 
-| Función | Web | iOS / Mac / Android |
+| Función | Chrome | Mac |
 |---|---|---|
 | Datos (lecciones, sesiones, palabras, vocabulario) | `localStorage` | Capacitor Preferences |
-| Micrófono (voz → texto) | Web Speech API (Chrome, Edge, Safari) | Reconocimiento del sistema: `@capgo/capacitor-speech-recognition` |
+| Micrófono (voz → texto) | Web Speech API de Chrome | Reconocimiento de Apple: `@capgo/capacitor-speech-recognition` |
 | Voz (texto → voz) | `speechSynthesis` | Voces del sistema: `@capacitor-community/text-to-speech` |
 | Claude | `@anthropic-ai/sdk` | igual |
 | Copia de seguridad | descarga de archivo | menú Compartir |
@@ -113,20 +88,27 @@ src/lessons/starter.json   historia incluida para usar la app sin clave
 public/                    manifest PWA, service worker, iconos web
 assets/                    imágenes fuente de iconos y splash (npm run icons)
 scripts/make-icons.mjs     dibuja los iconos
-ios/  android/             proyectos nativos generados por Capacitor
+ios/                       proyecto de Xcode (app de Mac) generado por Capacitor
 artifact/index.html        versión original que corre dentro de Claude (artifact)
 ```
 
 ## Iconos
 
 ```bash
-npm run icons      # regenera iconos y splash para web, iOS y Android desde scripts/make-icons.mjs
+npm run icons      # regenera iconos y splash para web y Mac desde scripts/make-icons.mjs
 ```
 
 ## Identificador de la app
 
 `com.dailyenglish.app` (en `capacitor.config.json`). Cámbialo por uno tuyo antes de publicar en
-App Store o Google Play.
+la Mac App Store.
+
+## Más adelante: iPhone y Android
+
+El código ya está preparado para móviles. El mismo proyecto de `ios/` se puede ejecutar en un iPhone desde Xcode.
+Para Android: `npm install @capacitor/android && npx cap add android`, y luego añadir el permiso
+`RECORD_AUDIO` y la consulta `android.speech.RecognitionService` en `AndroidManifest.xml`
+(están en el historial de git, en el primer commit).
 
 ## Versión dentro de Claude
 
