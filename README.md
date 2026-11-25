@@ -43,8 +43,8 @@ El micrófono de la versión web usa el reconocimiento de voz de Chrome, que nec
 npm run mac:install
 ```
 
-Compila la app, crea `build/Daily English.ipa` y abre el instalador de macOS, que la deja en
-Aplicaciones. Si macOS pide la contraseña del llavero para `codesign`, escribe la contraseña de tu Mac
+Compila la app, la instala en **Aplicaciones** como `Daily English.app` (reemplaza la versión anterior)
+y la abre. Si macOS pide la contraseña del llavero para `codesign`, escribe la contraseña de tu Mac
 y pulsa **Always Allow**.
 
 Para probar cambios con logs: `npm run mac` abre Xcode; elige **My Mac (Designed for iPad)** y pulsa ▶︎.
