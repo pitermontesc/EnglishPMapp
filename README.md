@@ -37,12 +37,21 @@ El micrófono de la versión web usa el reconocimiento de voz de Chrome, que nec
 
 ### Mac
 
+**Instalar o actualizar la app en tu Mac:**
+
 ```bash
-npm run mac        # compila, sincroniza y abre Xcode
+npm run mac:install
 ```
 
-En Xcode elige el destino **My Mac (Designed for iPad)** y pulsa ▶︎. En Signing & Capabilities
-selecciona tu equipo (Team); con una cuenta de Apple gratuita basta para tu propio Mac.
+Compila la app, crea `build/Daily English.ipa` y abre el instalador de macOS, que la deja en
+Aplicaciones. Si macOS pide la contraseña del llavero para `codesign`, escribe la contraseña de tu Mac
+y pulsa **Always Allow**.
+
+Para probar cambios con logs: `npm run mac` abre Xcode; elige **My Mac (Designed for iPad)** y pulsa ▶︎.
+
+La firma usa tu *Personal Team* (seleccionado en Xcode → target App → Signing & Capabilities).
+Con una cuenta gratuita, Apple caduca la firma a los 7 días: si la app deja de abrir, vuelve a
+ejecutar `npm run mac:install`.
 
 ### Después de cambiar el código
 
@@ -100,8 +109,8 @@ npm run icons      # regenera iconos y splash para web y Mac desde scripts/make-
 
 ## Identificador de la app
 
-`com.dailyenglish.app` (en `capacitor.config.json`). Cámbialo por uno tuyo antes de publicar en
-la Mac App Store.
+`com.pitermontes.dailyenglish` (en `capacitor.config.json` y en el proyecto de Xcode). Para publicar en la
+App Store haría falta una cuenta de desarrollador de Apple de pago.
 
 ## Más adelante: iPhone y Android
 
