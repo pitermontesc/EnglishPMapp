@@ -130,8 +130,8 @@ function startRec(o) {
   else { rec.label = o.btn.innerHTML; o.btn.textContent = "Stop"; o.btn.classList.add("rec"); }
   if (o.live) { o.live.textContent = "Listening…"; o.live.classList.add("listening"); }
   if (o.target) {
-    rec.timers.quiet = setTimeout(() => stopRec("auto"), 8000); // nothing said at all
-    rec.timers.max = setTimeout(() => stopRec("auto"), 6000 + o.target.length * 900);
+    rec.timers.quiet = setTimeout(() => stopRec("auto"), 10000 * pauseFactor()); // nothing said at all
+    rec.timers.max = setTimeout(() => stopRec("auto"), (10000 + o.target.length * 1200) * pauseFactor());
   }
   dict.start({ language: "en" }).catch((e) => finishRec(e && e.code));
   return true;
@@ -142,6 +142,9 @@ function stopRec(how) {
   Object.values(rec.timers).forEach(clearTimeout);
   dict.stop().catch(() => {});
 }
+// How long the microphone waits in silence before closing the take (Settings → Reading).
+const PAUSES = { short: 0.6, normal: 1, long: 1.6 };
+function pauseFactor() { return PAUSES[getSetting("pause", "normal")] || 1; }
 function heardSoFar() { return rec ? (rec.buf + " " + rec.interim).trim() : ""; }
 function onHeard() {
   if (!rec) return;
@@ -153,8 +156,10 @@ function onHeard() {
   const heard = words(text), res = align(rec.target, heard);
   const last = res[res.length - 1];
   const coverage = heard.length / rec.target.length;
+  // "Finished" only when the sentence's last word is also the last word heard.
+  const finished = last && last.ok && heard[heard.length - 1] === rec.target[rec.target.length - 1] && coverage >= 0.75;
   clearTimeout(rec.timers.silence);
-  const wait = last && last.ok && coverage >= 0.75 ? 450 : coverage >= 0.5 ? 1300 : 2200;
+  const wait = (finished ? 1000 : coverage >= 0.5 ? 2400 : 3400) * pauseFactor();
   rec.timers.silence = setTimeout(() => stopRec("auto"), wait);
 }
 function finishRec(reason) {
@@ -656,6 +661,7 @@ function renderSettings() {
   sel.value = getSetting("model", DEFAULT_MODEL);
   $("set-key").value = getSetting("apiKey", "");
   $("set-auto").checked = getSetting("autoLesson", true);
+  $("set-pause").value = getSetting("pause", "normal");
   const info = $("dev-info"); info.textContent = "";
   const platformName = { web: "Web browser", ios: "Mac app" }[PLATFORM] || PLATFORM;
   [
@@ -666,6 +672,7 @@ function renderSettings() {
   ].forEach((t) => info.appendChild(el("li", "", t)));
 }
 function wireSettings() {
+  $("set-pause").onchange = () => setSettings({ pause: $("set-pause").value });
   $("set-save").onclick = async () => {
     await setSettings({ apiKey: $("set-key").value.trim(), model: $("set-model").value, autoLesson: $("set-auto").checked });
     refreshAI(); renderSettings(); updateAIButtons();

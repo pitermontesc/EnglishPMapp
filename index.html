@@ -149,6 +149,17 @@
       <p class="small" id="set-msg" role="status"></p>
     </div>
     <div class="card">
+      <h3>Reading</h3>
+      <label class="field"><span>Pause before the microphone stops</span>
+        <select id="set-pause">
+          <option value="short">Short: stops quickly when you finish</option>
+          <option value="normal">Normal</option>
+          <option value="long">Long: waits more while you think</option>
+        </select>
+      </label>
+      <p class="hint">If the microphone cuts you off in the middle of a sentence, choose Long. You can always press Stop yourself.</p>
+    </div>
+    <div class="card">
       <h3>Your data</h3>
       <p class="hint">Lessons and progress are saved on this device. To continue on another device, export a backup here and import it there.</p>
       <div class="row"><button id="exp-btn">Export backup</button><button id="imp-btn">Import backup</button><input type="file" id="imp-file" accept="application/json,.json" hidden></div>
