@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily English</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one reading column. The story is set like a book page (serif),
+   every control and score around it is set like an instrument (sans + mono). */
+:root {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --ink: #17212b;
+  --muted: #5b6876;
+  --line: #d5dbe2;
+  --accent: #2046c7;
+  --accent-ink: #ffffff;
+  --accent-soft: #e3e9fb;
+  --mark: #b98900;
+  --mark-soft: #fff1c2;
+  --good: #1a7f4e;
+  --good-soft: #dff3e7;
+  --miss: #c0392b;
+  --miss-soft: #fbe3df;
+  --font-story: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #10161d; --surface: #18212b; --ink: #e8edf2; --muted: #9aa8b6; --line: #2b3743;
+    --accent: #8aa5ff; --accent-ink: #0d1530; --accent-soft: #1f2c52;
+    --mark: #f1c94f; --mark-soft: #453a12;
+    --good: #5fd39a; --good-soft: #153326; --miss: #ff8a7a; --miss-soft: #40201c;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #10161d; --surface: #18212b; --ink: #e8edf2; --muted: #9aa8b6; --line: #2b3743;
+  --accent: #8aa5ff; --accent-ink: #0d1530; --accent-soft: #1f2c52;
+  --mark: #f1c94f; --mark-soft: #453a12;
+  --good: #5fd39a; --good-soft: #153326; --miss: #ff8a7a; --miss-soft: #40201c;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 16px; line-height: 1.5; }
+.wrap { max-width: 780px; margin: 0 auto; padding: 20px 16px 64px; display: flex; flex-direction: column; gap: 20px; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; justify-content: space-between; }
+.brand { font-family: var(--font-story); font-weight: 600; font-size: 28px; letter-spacing: -0.01em; margin: 0; }
+.meta { color: var(--muted); font-size: 14px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 500; background: var(--accent-soft); color: var(--accent); font-variant-numeric: tabular-nums; }
+.chip.good { background: var(--good-soft); color: var(--good); }
+.chip.miss { background: var(--miss-soft); color: var(--miss); }
+.chip.mark { background: var(--mark-soft); color: var(--mark); }
+nav.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+nav.tabs a { padding: 8px 14px; color: var(--muted); text-decoration: none; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+nav.tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+section.view { display: none; flex-direction: column; gap: 20px; }
+section.view.on { display: flex; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+h2 { font-family: var(--font-story); font-weight: 600; font-size: 24px; line-height: 1.2; margin: 0; text-wrap: balance; }
+h3 { font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0; }
+p { margin: 0; }
+.hint { color: var(--muted); font-size: 14px; max-width: 65ch; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+button { font: inherit; font-size: 14px; font-weight: 500; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 6px 12px; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button.rec { background: var(--miss); border-color: var(--miss); color: #fff; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sentences { display: flex; flex-direction: column; }
+.sent { display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-top: 1px solid var(--line); }
+.sent:first-child { border-top: 0; padding-top: 0; }
+.sent-text { font-family: var(--font-story); font-size: 21px; line-height: 1.5; max-width: 62ch; }
+.tok { border-radius: 4px; padding: 0 1px; }
+.tok.vocab { border-bottom: 2px solid var(--mark); }
+.tok.ok { background: var(--good-soft); }
+.tok.miss { background: var(--miss-soft); color: var(--miss); text-decoration: underline wavy; text-underline-offset: 4px; }
+.heard { font-size: 14px; color: var(--muted); }
+.heard b { font-weight: 500; color: var(--ink); }
+.live { font-family: var(--font-mono); font-size: 13px; color: var(--accent); min-height: 1.4em; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.vcard { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.vword { font-family: var(--font-story); font-size: 20px; font-weight: 600; overflow-wrap: anywhere; }
+.ipa { font-family: var(--font-mono); font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.ex { font-family: var(--font-story); font-style: italic; }
+.small { font-size: 14px; }
+.wordrow { border-top: 1px solid var(--line); padding: 12px 0; display: flex; flex-direction: column; gap: 6px; }
+.wordrow:first-child { border-top: 0; padding-top: 0; }
+.wordhead { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.wordhead .vword { margin-right: auto; }
+ul.plain { margin: 0; padding-left: 18px; }
+.drill { border-top: 1px solid var(--line); padding: 12px 0; display: flex; flex-direction: column; gap: 8px; }
+.drill:first-child { border-top: 0; padding-top: 0; }
+.drill .q { font-family: var(--font-story); font-size: 18px; max-width: 62ch; }
+button.opt.right { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+button.opt.wrong { background: var(--miss-soft); border-color: var(--miss); color: var(--miss); }
+.feedback { white-space: pre-wrap; border-left: 3px solid var(--accent); padding: 4px 0 4px 12px; max-width: 65ch; }
+.transcript { font-family: var(--font-story); font-size: 18px; border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; min-height: 3em; }
+.note { border-radius: 8px; padding: 10px 12px; background: var(--mark-soft); color: var(--ink); font-size: 14px; }
+.note[hidden] { display: none; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+.stat { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: var(--surface); }
+.stat .n { font-family: var(--font-story); font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat .l { font-size: 13px; color: var(--muted); }
+.bars { display: flex; flex-direction: column; gap: 6px; }
+.bar { display: grid; grid-template-columns: 92px 1fr 44px; gap: 10px; align-items: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+.bar .track { height: 10px; background: var(--accent-soft); border-radius: 5px; overflow: hidden; }
+.bar .fill { height: 100%; background: var(--accent); border-radius: 5px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 500; border-top: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.scroll { overflow-x: auto; }
+@media (max-width: 420px) { .sent-text { font-size: 19px; } .card { padding: 16px; } }
+@media (prefers-reduced-motion: no-preference) { button.rec { animation: pulse 1.2s ease-in-out infinite; } }
+@keyframes pulse { 50% { opacity: 0.7; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1 class="brand">Daily English</h1>
+    <div class="meta"><span id="today-date"></span><span class="chip" id="streak">Streak 0 days</span></div>
+  </header>
+  <nav class="tabs" aria-label="Sections">
+    <a href="#today" data-tab="today">Today</a>
+    <a href="#review" data-tab="review">Review</a>
+    <a href="#progress" data-tab="progress">Progress</a>
+  </nav>
+  <div class="note" id="status" hidden></div>
+
+  <section class="view" id="view-today">
+    <div class="card" id="story-card">
+      <div class="row" style="justify-content:space-between">
+        <h3 id="lesson-kicker">Today's story</h3>
+        <span class="chip" id="acc-chip">Not read yet</span>
+      </div>
+      <h2 id="lesson-title">Loading your lesson…</h2>
+      <p class="hint" id="story-hint">Listen to a sentence, then press Read it and say it aloud. Press Stop when you finish. Green words were understood; red words were not.</p>
+      <div class="row">
+        <button id="listen-all">Listen to the whole story</button>
+        <button id="listen-slow">Listen slowly</button>
+        <button id="stop-audio">Stop audio</button>
+        <button id="make-lesson" class="primary" hidden>Create today's story</button>
+      </div>
+      <div class="sentences" id="sentences"></div>
+    </div>
+
+    <div class="card" id="fix-card">
+      <div class="row" style="justify-content:space-between">
+        <h3>Words to fix</h3>
+        <button id="coach-btn" class="primary" disabled>Coach me on these words</button>
+      </div>
+      <p class="hint" id="fix-empty">Words that were not understood while you read will appear here, with the sound, the usual mistake and examples.</p>
+      <div id="fix-list"></div>
+    </div>
+
+    <div class="card" id="focus-card" hidden>
+      <h3>Sound of the day</h3>
+      <h2 id="focus-title"></h2>
+      <p class="hint" id="focus-tip"></p>
+      <div class="grid" id="focus-items"></div>
+    </div>
+
+    <div class="card">
+      <h3>New words</h3>
+      <div class="grid" id="vocab"></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h3>Exercises</h3><span class="chip" id="drill-chip">0 answered</span></div>
+      <div id="drills"></div>
+    </div>
+
+    <div class="card">
+      <h3>Speak freely</h3>
+      <p class="sent-text" id="speak-prompt"></p>
+      <p class="hint">Answer aloud for about a minute without reading. Then ask for feedback on grammar and word choice.</p>
+      <div class="row">
+        <button id="speak-rec">Start speaking</button>
+        <button id="speak-fb" class="primary" disabled>Get feedback</button>
+      </div>
+      <div class="live" id="speak-live"></div>
+      <div class="transcript" id="speak-text"></div>
+      <div class="feedback" id="speak-feedback" hidden></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-review">
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h3>Vocabulary due today</h3><span class="chip" id="due-chip">0 due</span></div>
+      <p class="hint" id="due-empty">Nothing is due. New words from each lesson come back after 1, 3, 7, 14 and 30 days.</p>
+      <div class="grid" id="due-list"></div>
+    </div>
+    <div class="card">
+      <h3>Your difficult words</h3>
+      <p class="hint" id="hard-empty">No difficult words yet. They are collected from your readings.</p>
+      <div id="hard-list"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-progress">
+    <div class="stats">
+      <div class="stat"><div class="n" id="st-streak">0</div><div class="l">day streak</div></div>
+      <div class="stat"><div class="n" id="st-days">0</div><div class="l">days practiced</div></div>
+      <div class="stat"><div class="n" id="st-acc">–</div><div class="l">average words understood</div></div>
+      <div class="stat"><div class="n" id="st-vocab">0</div><div class="l">words in review</div></div>
+    </div>
+    <div class="card">
+      <h3>Words understood per day</h3>
+      <p class="hint" id="bars-empty">Your daily results will appear here after your first reading.</p>
+      <div class="bars" id="bars"></div>
+    </div>
+    <div class="card">
+      <h3>Most missed words</h3>
+      <div class="scroll"><table><thead><tr><th>Word</th><th>Sound</th><th class="num">Missed</th><th class="num">Said well</th><th>Last</th></tr></thead><tbody id="miss-table"></tbody></table></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function dateKey(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function addDays(key, n) { var p = key.split("-"); var d = new Date(+p[0], +p[1] - 1, +p[2]); d.setDate(d.getDate() + n); return dateKey(d); }
+  var TODAY = dateKey(new Date());
+  var INTERVALS = [1, 3, 7, 14, 30];
+
+  // ---------- pure text helpers ----------
+  function norm(w) { return String(w).toLowerCase().replace(/[‘’]/g, "'").replace(/[^a-z0-9']/g, "").replace(/^'+|'+$/g, ""); }
+  function words(text) { return String(text).split(/[\s—–\-\/]+/).map(norm).filter(Boolean); }
+  function docId(w) { return norm(w).replace(/[^a-z0-9]/g, "_") || "_"; }
+  // Align what was heard against the target sentence (edit distance with backtrace).
+  function align(target, heard) {
+    var n = target.length, m = heard.length, i, j, dp = [];
+    for (i = 0; i <= n; i++) { dp.push(new Array(m + 1)); dp[i][0] = i; }
+    for (j = 0; j <= m; j++) dp[0][j] = j;
+    for (i = 1; i <= n; i++) for (j = 1; j <= m; j++) {
+      var c = target[i - 1] === heard[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j - 1] + c, dp[i - 1][j] + 1, dp[i][j - 1] + 1);
+    }
+    var res = new Array(n); i = n; j = m;
+    while (i > 0) {
+      if (j > 0 && target[i - 1] === heard[j - 1] && dp[i][j] === dp[i - 1][j - 1]) { res[i - 1] = { ok: true }; i--; j--; }
+      else if (j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) { res[i - 1] = { ok: false, heard: heard[j - 1] }; i--; j--; }
+      else if (dp[i][j] === dp[i - 1][j] + 1) { res[i - 1] = { ok: false, heard: "" }; i--; }
+      else { j--; }
+    }
+    return res;
+  }
+
+  // ---------- state ----------
+  var db = null, tts = null, dict = null, sample = null;
+  var lesson = null, lessonIsToday = false;
+  var session = { date: TODAY, reads: {}, missed: [], drills: {}, speak: "" };
+  var allSessions = [], troub = {}, vocabDocs = {};
+  var rec = null; // active recording {key, buf, btn, live, label, done}
+  var chain = Promise.resolve();
+  function enqueue(fn) { chain = chain.then(fn).catch(function (e) { status("Could not save: " + (e && e.code || "error") + ". Your results stay on screen."); }); return chain; }
+  function status(msg) { var s = $("status"); if (!msg) { s.hidden = true; return; } s.textContent = msg; s.hidden = false; }
+
+  // ---------- audio out ----------
+  function say(text, rate) {
+    if (tts) { tts.speak(String(text).slice(0, 1900), { language: "en", rate: rate || 1 }).catch(function () {}); return; }
+    try { var u = new SpeechSynthesisUtterance(text); u.lang = "en-US"; u.rate = rate || 1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { status("Audio is not available in this view. Open the page in Chrome or the Claude desktop app."); }
+  }
+  function stopAudio() { if (tts) { try { tts.stop(); } catch (e) {} } try { speechSynthesis.cancel(); } catch (e) {} }
+
+  // ---------- microphone ----------
+  function toggleRec(o) {
+    if (!dict) { status("The microphone works in Chrome or in the main window of the Claude desktop app. Open this page there to read aloud."); return; }
+    if (rec) { if (rec.key === o.key) dict.stop().catch(function () {}); return; }
+    stopAudio();
+    rec = { key: o.key, buf: "", btn: o.btn, live: o.live, label: o.btn.textContent, done: o.done };
+    o.btn.textContent = "Stop"; o.btn.classList.add("rec");
+    if (o.live) o.live.textContent = "Listening…";
+    dict.start({ language: "en" }).catch(function (e) { finishRec(e && e.code); });
+  }
+  function finishRec(reason) {
+    if (!rec) return;
+    var r = rec; rec = null;
+    r.btn.textContent = r.label; r.btn.classList.remove("rec");
+    if (r.live) r.live.textContent = "";
+    var text = r.buf.trim();
+    if (!text) {
+      if (reason === "not_granted") status("The microphone is turned off for this page. Allow it in the page's Permissions menu.");
+      else if (reason === "unavailable") status("Dictation is not available in this view.");
+      else if (r.live) r.live.textContent = "Nothing was heard. Try again a little closer to the microphone.";
+      return;
+    }
+    status("");
+    r.done(text);
+  }
+  function wireDictation() {
+    dict.onFinal(function (e) { if (rec) rec.buf += e.text; });
+    dict.onPartial(function (e) { if (rec && rec.live) rec.live.textContent = (rec.buf + " " + e.text).trim() || "Listening…"; });
+    dict.onState(function (e) { if (e.state === "idle") finishRec(e.reason); });
+  }
+
+  // ---------- today: story ----------
+  function vocabSet() {
+    var s = {}; (lesson.vocab || []).forEach(function (v) { words(v.inStory || v.word).forEach(function (w) { if (w.length > 3) s[w] = 1; }); }); return s;
+  }
+  function renderLesson() {
+    $("lesson-title").textContent = lesson.title || "Today's story";
+    $("lesson-kicker").textContent = (lessonIsToday ? "Today's story" : "Latest story, " + lesson.date) + (lesson.level ? " · " + lesson.level : "");
+    var box = $("sentences"); box.textContent = "";
+    var vs = vocabSet();
+    (lesson.sentences || []).forEach(function (text, idx) {
+      var row = el("div", "sent");
+      var p = el("p", "sent-text");
+      String(text).split(/\s+/).forEach(function (raw, k) {
+        if (k) p.appendChild(document.createTextNode(" "));
+        var sp = el("span", "tok", raw); sp.dataset.n = words(raw).join(" ");
+        if (words(raw).some(function (w) { return vs[w]; })) sp.classList.add("vocab");
+        p.appendChild(sp);
+      });
+      var ctl = el("div", "row");
+      var b1 = el("button", "", "Listen"); b1.onclick = function () { say(text, 1); };
+      var b2 = el("button", "", "Slow"); b2.onclick = function () { say(text, 0.75); };
+      var b3 = el("button", "primary", "Read it");
+      var pill = el("span", "chip", "");
+      pill.hidden = true;
+      var live = el("div", "live");
+      var heard = el("div", "heard");
+      b3.onclick = function () { toggleRec({ key: "s" + idx, btn: b3, live: live, done: function (t) { gradeSentence(idx, t); } }); };
+      ctl.appendChild(b1); ctl.appendChild(b2); ctl.appendChild(b3); ctl.appendChild(pill);
+      row.appendChild(p); row.appendChild(ctl); row.appendChild(live); row.appendChild(heard);
+      row._p = p; row._pill = pill; row._heard = heard;
+      box.appendChild(row);
+      var prev = session.reads[idx];
+      if (prev) paintSentence(row, text, prev.heard);
+    });
+    $("speak-prompt").textContent = lesson.speak || "Retell today's story in your own words.";
+    renderFocus(); renderVocab(); renderDrills(); renderFix(); updateAcc();
+  }
+  function paintSentence(row, text, heardText) {
+    var target = words(text), res = align(target, words(heardText)), k = 0, hit = 0, missed = [];
+    Array.prototype.forEach.call(row._p.querySelectorAll(".tok"), function (sp) {
+      var parts = sp.dataset.n ? sp.dataset.n.split(" ") : []; if (!parts.length) return;
+      var ok = true;
+      parts.forEach(function (w) { var r = res[k++]; if (r && r.ok) hit++; else { ok = false; missed.push({ word: w, heard: r ? r.heard : "" }); } });
+      sp.classList.remove("ok", "miss"); sp.classList.add(ok ? "ok" : "miss");
+    });
+    var pct = target.length ? Math.round(100 * hit / target.length) : 0;
+    row._pill.hidden = false; row._pill.textContent = pct + "% understood";
+    row._pill.className = "chip " + (pct >= 90 ? "good" : pct >= 70 ? "mark" : "miss");
+    row._heard.textContent = ""; row._heard.appendChild(document.createTextNode("Heard: ")); row._heard.appendChild(el("b", "", heardText));
+    return { hit: hit, total: target.length, missed: missed };
+  }
+  function gradeSentence(idx, heardText) {
+    var row = $("sentences").children[idx], text = lesson.sentences[idx];
+    var g = paintSentence(row, text, heardText);
+    session.reads[idx] = { heard: heardText, hit: g.hit, total: g.total };
+    var touched = [];
+    g.missed.forEach(function (m) {
+      if (m.word.length < 3) return;
+      var t = troub[m.word] || (troub[m.word] = { word: m.word, misses: 0, hits: 0 });
+      t.misses++; t.last = TODAY; t.heardAs = m.heard || ""; touched.push(m.word);
+      if (session.missed.indexOf(m.word) < 0) session.missed.push(m.word);
+    });
+    saveSession(); touched.forEach(saveWord);
+    renderFix(); updateAcc(); renderProgress();
+  }
+  function accuracy(s) { var h = 0, t = 0; Object.keys(s.reads || {}).forEach(function (k) { h += s.reads[k].hit; t += s.reads[k].total; }); return t ? Math.round(100 * h / t) : null; }
+  function updateAcc() {
+    var a = accuracy(session), n = Object.keys(session.reads).length, c = $("acc-chip");
+    if (a == null) { c.textContent = "Not read yet"; c.className = "chip"; return; }
+    c.textContent = a + "% understood · " + n + "/" + (lesson.sentences || []).length + " sentences";
+    c.className = "chip " + (a >= 90 ? "good" : a >= 70 ? "mark" : "miss");
+  }
+  function saveSession() {
+    if (!db || !lesson) return;
+    var body = { date: TODAY, lesson: lesson.date, title: lesson.title || "", reads: session.reads, missed: session.missed, drills: session.drills, speak: session.speak || "", accuracy: accuracy(session), updatedAt: new Date().toISOString() };
+    var found = false; allSessions = allSessions.map(function (s) { if (s.date === TODAY) { found = true; return body; } return s; }); if (!found) allSessions.push(body);
+    enqueue(function () { return db.doc("sessions/" + TODAY).set(JSON.parse(JSON.stringify(body))); });
+  }
+  function saveWord(w) { if (!db || !troub[w]) return; var body = JSON.parse(JSON.stringify(troub[w])); enqueue(function () { return db.doc("words/" + docId(w)).set(body); }); }
+
+  // ---------- word rows (fix list + difficult words) ----------
+  function wordRow(t) {
+    var row = el("div", "wordrow"), head = el("div", "wordhead");
+    head.appendChild(el("span", "vword", t.word));
+    if (t.coach && t.coach.ipa) head.appendChild(el("span", "ipa", t.coach.ipa));
+    if (t.heardAs) head.appendChild(el("span", "chip miss", "heard as “" + t.heardAs + "”"));
+    var b1 = el("button", "", "Listen"); b1.onclick = function () { say(t.word, 0.8); };
+    var b2 = el("button", "primary", "Say it");
+    var live = el("div", "live");
+    b2.onclick = function () {
+      toggleRec({ key: "w" + t.word, btn: b2, live: live, done: function (text) {
+        var ok = words(text).indexOf(t.word) >= 0;
+        if (ok) { t.hits = (t.hits || 0) + 1; saveWord(t.word); }
+        live.textContent = ok ? "Understood: “" + t.word + "”. Well done." : "Heard “" + text + "”. Listen again and retry.";
+        renderProgress();
+      } });
+    };
+    head.appendChild(b1); head.appendChild(b2); row.appendChild(head); row.appendChild(live);
+    var c = t.coach;
+    if (c) {
+      if (c.say) row.appendChild(el("p", "small", "Suena como: " + c.say));
+      if (c.tip) row.appendChild(el("p", "small", c.tip));
+      if (c.pair) { var pr = el("div", "row small"); pr.appendChild(el("span", "hint", "Compare:")); String(c.pair).split(/\s*\/\s*/).forEach(function (w) { var b = el("button", "", w); b.onclick = function () { say(w, 0.8); }; pr.appendChild(b); }); row.appendChild(pr); }
+      if (c.examples && c.examples.length) { var ul = el("ul", "plain"); c.examples.forEach(function (x) { var li = el("li", "ex", x); li.style.cursor = "pointer"; li.title = "Click to listen"; li.onclick = function () { say(x, 0.9); }; ul.appendChild(li); }); row.appendChild(ul); }
+    }
+    return row;
+  }
+  function renderFix() {
+    var list = $("fix-list"); list.textContent = "";
+    var ws = session.missed.filter(function (w) { return troub[w]; });
+    $("fix-empty").hidden = ws.length > 0;
+    ws.forEach(function (w) { list.appendChild(wordRow(troub[w])); });
+    var need = ws.filter(function (w) { return !troub[w].coach; });
+    $("coach-btn").disabled = !sample || need.length === 0;
+    $("coach-btn").textContent = need.length ? "Coach me on these words" : (ws.length ? "Coaching ready" : "Coach me on these words");
+  }
+  function coach() {
+    var need = session.missed.filter(function (w) { return troub[w] && !troub[w].coach; }).slice(0, 15);
+    if (!sample || !need.length) return;
+    var btn = $("coach-btn"); btn.disabled = true; btn.textContent = "Thinking…";
+    var info = need.map(function (w) { return w + (troub[w].heardAs ? " (speech recognition heard: " + troub[w].heardAs + ")" : ""); }).join("; ");
+    var prompt = "You are a native English pronunciation coach for a Spanish-speaking adult (Latin American Spanish) working toward C1/C2 speaking. " +
+      "He read a text aloud and speech recognition did not understand these words: " + info + ".\n" +
+      "Reply with only a JSON object whose keys are exactly those words (lowercase). Each value is an object with: " +
+      '"ipa" (General American IPA between slashes), ' +
+      '"say" (a respelling a Spanish speaker can read aloud, stressed syllable in CAPITALS, e.g. "i-LU-siv"), ' +
+      '"tip" (2 short sentences IN SPANISH: the mistake Spanish speakers usually make with this word and what to do with mouth, stress or rhythm to fix it; use what was heard as a clue), ' +
+      '"pair" (two English words separated by " / " that contrast the difficult sound, e.g. "ship / sheep"), ' +
+      '"examples" (array of 3 natural English sentences, C1 level, each using the word).\n' +
+      'Example: {"focus":{"ipa":"/ˈfoʊkəs/","say":"FOU-kes","tip":"...","pair":"folk / fork","examples":["...","...","..."]}}';
+    sample.json(prompt, { cache: false }).then(function (out) {
+      need.forEach(function (w) { var c = out && out[w]; if (c && typeof c === "object") { troub[w].coach = { ipa: String(c.ipa || ""), say: String(c.say || ""), tip: String(c.tip || ""), pair: String(c.pair || ""), examples: Array.isArray(c.examples) ? c.examples.slice(0, 3).map(String) : [] }; saveWord(w); } });
+      renderFix(); renderHard(); renderProgress();
+    }).catch(function (e) {
+      btn.textContent = "Coach me on these words"; btn.disabled = false;
+      if (e && (e.code === "not_granted" || e.code === "sampling_disabled")) { btn.disabled = true; status("Coaching needs permission to ask Claude from this page."); }
+      else status("The coaching could not be created (" + (e && e.code || "error") + "). Try again in a moment.");
+    });
+  }
+
+  // ---------- focus, vocab, drills ----------
+  function renderFocus() {
+    var f = lesson.focus; $("focus-card").hidden = !f; if (!f) return;
+    $("focus-title").textContent = f.title || ""; $("focus-tip").textContent = f.tip || "";
+    var g = $("focus-items"); g.textContent = "";
+    (f.items || []).forEach(function (it) { var c = el("div", "vcard"); c.appendChild(el("div", "vword", it.text)); if (it.note) c.appendChild(el("div", "ipa", it.note)); var b = el("button", "", "Listen"); b.onclick = function () { say(it.text, 0.8); }; c.appendChild(b); g.appendChild(c); });
+  }
+  function vocabCard(v, withGrade) {
+    var c = el("div", "vcard");
+    c.appendChild(el("div", "vword", v.word));
+    var meta = [v.ipa, v.say].filter(Boolean).join("  ·  "); if (meta) c.appendChild(el("div", "ipa", meta));
+    var body = el("div"); body.style.display = "flex"; body.style.flexDirection = "column"; body.style.gap = "6px";
+    if (v.level || v.pos) body.appendChild(el("div", "row", "")).appendChild(el("span", "chip mark", [v.level, v.pos].filter(Boolean).join(" · ")));
+    if (v.meaning) body.appendChild(el("div", "small", v.meaning));
+    if (v.es) body.appendChild(el("div", "small hint", "ES: " + v.es));
+    if (v.example) body.appendChild(el("div", "ex small", v.example));
+    var ctl = el("div", "row");
+    var b = el("button", "", "Listen"); b.onclick = function () { say(v.word + ". " + (v.example || ""), 0.9); }; ctl.appendChild(b);
+    if (withGrade) {
+      body.hidden = true;
+      var show = el("button", "primary", "Show meaning"); ctl.appendChild(show);
+      show.onclick = function () {
+        body.hidden = false; show.remove();
+        var again = el("button", "", "Again tomorrow"), got = el("button", "primary", "I knew it");
+        again.onclick = function () { gradeVocab(v, false); }; got.onclick = function () { gradeVocab(v, true); };
+        ctl.appendChild(again); ctl.appendChild(got);
+      };
+    }
+    c.appendChild(body); c.appendChild(ctl); return c;
+  }
+  function renderVocab() {
+    var g = $("vocab"); g.textContent = ""; (lesson.vocab || []).forEach(function (v) { g.appendChild(vocabCard(v, false)); });
+  }
+  function seedVocab() {
+    if (!db || !lessonIsToday) return;
+    (lesson.vocab || []).forEach(function (v) {
+      var id = docId(v.word); if (vocabDocs[id]) return;
+      var body = { word: String(v.word), ipa: String(v.ipa || ""), say: String(v.say || ""), meaning: String(v.meaning || ""), es: String(v.es || ""), example: String(v.example || ""), level: String(v.level || ""), pos: String(v.pos || ""), added: TODAY, due: addDays(TODAY, 1), step: 0 };
+      vocabDocs[id] = body; enqueue(function () { return db.doc("vocab/" + id).set(body); });
+    });
+  }
+  function gradeVocab(v, knew) {
+    var id = docId(v.word), d = vocabDocs[id]; if (!d) return;
+    var step = knew ? (d.step || 0) + 1 : 0;
+    d = vocabDocs[id] = Object.assign({}, d, { step: step, due: addDays(TODAY, knew ? INTERVALS[Math.min(step, INTERVALS.length - 1)] : 1), lastReview: TODAY });
+    if (db) enqueue(function () { return db.doc("vocab/" + id).set(d); });
+    renderDue(); renderProgress();
+  }
+  function renderDrills() {
+    var box = $("drills"); box.textContent = "";
+    (lesson.drills || []).forEach(function (d, i) {
+      var row = el("div", "drill"); row.appendChild(el("div", "q", (i + 1) + ". " + d.prompt));
+      var opts = el("div", "row"), note = el("div", "small hint");
+      (d.options || []).forEach(function (o) {
+        var b = el("button", "opt", o);
+        b.onclick = function () { session.drills[i] = o; saveSession(); paint(); updateDrillChip(); };
+        opts.appendChild(b);
+      });
+      function paint() {
+        var picked = session.drills[i]; if (picked == null) return;
+        Array.prototype.forEach.call(opts.children, function (b) { b.disabled = true; if (b.textContent === d.answer) b.classList.add("right"); else if (b.textContent === picked) b.classList.add("wrong"); });
+        note.textContent = (picked === d.answer ? "Correct. " : "Not quite. ") + (d.why || "");
+      }
+      row.appendChild(opts); row.appendChild(note); box.appendChild(row); paint();
+    });
+    updateDrillChip();
+  }
+  function updateDrillChip() {
+    var ds = lesson.drills || [], done = 0, ok = 0;
+    ds.forEach(function (d, i) { if (session.drills[i] != null) { done++; if (session.drills[i] === d.answer) ok++; } });
+    $("drill-chip").textContent = done ? ok + "/" + ds.length + " correct" : ds.length + " questions";
+    $("drill-chip").className = "chip" + (done === ds.length && ds.length ? (ok === ds.length ? " good" : " mark") : "");
+  }
+
+  // ---------- speak freely ----------
+  function wireSpeak() {
+    var btn = $("speak-rec");
+    btn.onclick = function () { toggleRec({ key: "speak", btn: btn, live: $("speak-live"), done: function (t) { session.speak = ((session.speak || "") + " " + t).trim(); $("speak-text").textContent = session.speak; $("speak-fb").disabled = !sample; saveSession(); } }); };
+    $("speak-fb").onclick = function () {
+      if (!sample || !session.speak) return;
+      var out = $("speak-feedback"), b = $("speak-fb"); out.hidden = false; out.textContent = "Thinking…"; b.disabled = true;
+      var prompt = "You are a native English teacher giving feedback to a Spanish-speaking adult aiming at C1/C2 speaking. " +
+        "The question was: \"" + $("speak-prompt").textContent + "\"\nThis is a speech-recognition transcript of his spoken answer (ignore missing punctuation):\n\"" + session.speak + "\"\n\n" +
+        "Write plain text, no markdown, at most 170 words, in this order:\n" +
+        "1) One sentence on what he did well.\n" +
+        "2) Corrections: up to 4 lines, each as: what he said -> a natural correction (brief reason in Spanish). Watch articles, third-person -s, tenses, prepositions and word order.\n" +
+        "3) Upgrade: 2 phrases he used, each rewritten with a C1/C2 word or idiom.\n" +
+        "4) One sentence for him to repeat aloud now.";
+      sample(prompt, { cache: false, onText: function (u) { out.textContent = u.text; } }).then(function () { b.disabled = false; }).catch(function (e) { out.textContent = e && e.text ? e.text : "Feedback could not be created (" + (e && e.code || "error") + ")."; b.disabled = false; });
+    };
+  }
+
+  // ---------- review + progress ----------
+  function dueList() { return Object.keys(vocabDocs).map(function (k) { return vocabDocs[k]; }).filter(function (d) { return d.due && d.due <= TODAY; }).sort(function (a, b) { return a.due < b.due ? -1 : 1; }); }
+  function renderDue() {
+    var due = dueList(), g = $("due-list"); g.textContent = "";
+    $("due-chip").textContent = due.length + " due"; $("due-empty").hidden = due.length > 0;
+    due.slice(0, 12).forEach(function (d) { g.appendChild(vocabCard(d, true)); });
+  }
+  function hardList() { return Object.keys(troub).map(function (k) { return troub[k]; }).filter(function (t) { return (t.misses || 0) > (t.hits || 0); }).sort(function (a, b) { return (b.misses - (b.hits || 0)) - (a.misses - (a.hits || 0)); }); }
+  function renderHard() {
+    var list = hardList().slice(0, 12), box = $("hard-list"); box.textContent = ""; $("hard-empty").hidden = list.length > 0;
+    list.forEach(function (t) { box.appendChild(wordRow(t)); });
+  }
+  function streak() {
+    var days = {}; allSessions.forEach(function (s) { if (s.accuracy != null) days[s.date] = 1; });
+    var d = days[TODAY] ? TODAY : addDays(TODAY, -1), n = 0; while (days[d]) { n++; d = addDays(d, -1); } return n;
+  }
+  function renderProgress() {
+    var done = allSessions.filter(function (s) { return s.accuracy != null; }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    var st = streak();
+    $("streak").textContent = "Streak " + st + (st === 1 ? " day" : " days"); $("st-streak").textContent = st; $("st-days").textContent = done.length;
+    $("st-acc").textContent = done.length ? Math.round(done.reduce(function (a, s) { return a + s.accuracy; }, 0) / done.length) + "%" : "–";
+    $("st-vocab").textContent = Object.keys(vocabDocs).length;
+    var bars = $("bars"); bars.textContent = ""; $("bars-empty").hidden = done.length > 0;
+    done.slice(0, 14).forEach(function (s) { var r = el("div", "bar"); r.appendChild(el("span", "", s.date)); var t = el("div", "track"), f = el("div", "fill"); f.style.width = s.accuracy + "%"; t.appendChild(f); r.appendChild(t); r.appendChild(el("span", "", s.accuracy + "%")); bars.appendChild(r); });
+    var tb = $("miss-table"); tb.textContent = "";
+    var rows = Object.keys(troub).map(function (k) { return troub[k]; }).sort(function (a, b) { return (b.misses || 0) - (a.misses || 0); }).slice(0, 25);
+    if (!rows.length) { var tr0 = el("tr"); var td0 = el("td", "hint", "No missed words recorded yet."); td0.colSpan = 5; tr0.appendChild(td0); tb.appendChild(tr0); }
+    rows.forEach(function (t) { var tr = el("tr"); tr.appendChild(el("td", "", t.word)); tr.appendChild(el("td", "ipa", t.coach && t.coach.ipa || "")); tr.appendChild(el("td", "num", String(t.misses || 0))); tr.appendChild(el("td", "num", String(t.hits || 0))); tr.appendChild(el("td", "", t.last || "")); tb.appendChild(tr); });
+  }
+
+  // ---------- lesson creation fallback (asks Claude from the page) ----------
+  function makeLesson() {
+    if (!sample) return;
+    var b = $("make-lesson"); b.disabled = true; b.textContent = "Writing your story…";
+    var hard = hardList().slice(0, 8).map(function (t) { return t.word; }).join(", ") || "none yet";
+    var recent = allSessions.slice(-7).map(function (s) { return s.title; }).filter(Boolean).join("; ") || "none";
+    var prompt = "Create today's English lesson for a Spanish-speaking senior QA engineer practising reading aloud. Level: natural C1 prose with exactly 7 C2-level words. " +
+      "Topic: alternate between everyday life and software/QA work; avoid these recent titles: " + recent + ". Reuse some of his difficult words if natural: " + hard + ". No digits, write numbers as words. American spelling.\n" +
+      "Reply with only a JSON object with these fields:\n" +
+      '"title": string; "level": "C1 + C2 words"; "topic": string;\n' +
+      '"sentences": array of 9 to 11 sentences forming one story (12 to 22 words each);\n' +
+      '"vocab": array of 7 objects {"word","inStory" (exact form used in the story),"ipa" (General American, between slashes),"say" (respelling for Spanish speakers, stressed syllable in CAPITALS),"pos","level" ("C1" or "C2"),"meaning" (short English definition),"es" (Spanish translation),"example" (a new sentence)};\n' +
+      '"focus": {"title" (one pronunciation point present in the story),"tip" (2 sentences in Spanish),"items": array of 5 to 7 {"text" (word or minimal pair from the story),"note" (IPA and a 3 to 6 word cue)}};\n' +
+      '"drills": array of 4 {"prompt" (sentence with ____ for one vocab word),"options" (4 strings),"answer" (one of the options),"why" (one short sentence)};\n' +
+      '"speak": one open question related to the story.';
+    sample.json(prompt, { cache: false }).then(function (L) {
+      if (!L || !Array.isArray(L.sentences) || !L.sentences.length) throw { code: "invalid_json" };
+      L.date = TODAY; L.source = "page"; lesson = L; lessonIsToday = true; b.hidden = true; status("");
+      if (db) enqueue(function () { return db.doc("lessons/" + TODAY).set(JSON.parse(JSON.stringify(L))); });
+      session = { date: TODAY, reads: {}, missed: [], drills: {}, speak: "" };
+      renderLesson(); seedVocab(); renderProgress();
+    }).catch(function (e) { b.disabled = false; b.textContent = "Create today's story"; status("The story could not be created (" + (e && e.code || "error") + "). Try again."); });
+  }
+
+  // ---------- routing ----------
+  function route() {
+    var h = (location.hash || "#today").slice(1); if (["today", "review", "progress"].indexOf(h) < 0) h = "today";
+    ["today", "review", "progress"].forEach(function (t) { $("view-" + t).classList.toggle("on", t === h); });
+    Array.prototype.forEach.call(document.querySelectorAll("nav.tabs a"), function (a) { if (a.dataset.tab === h) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  }
+  window.addEventListener("hashchange", route); route();
+  $("today-date").textContent = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  $("listen-all").onclick = function () { if (lesson) say((lesson.sentences || []).join(" "), 1); };
+  $("listen-slow").onclick = function () { if (lesson) say((lesson.sentences || []).join(" "), 0.75); };
+  $("stop-audio").onclick = stopAudio;
+  $("coach-btn").onclick = coach;
+  $("make-lesson").onclick = makeLesson;
+  wireSpeak(); renderProgress(); renderDue(); renderHard();
+
+  // ---------- load ----------
+  function snapDocs(q) { return q.docs.map(function (d) { return d.data(); }).filter(Boolean); }
+  function load() {
+    var timer = setTimeout(function () { if (!lesson) status("Your lessons can't be reached yet. Check your connection; the page keeps trying."); }, 10000);
+    Promise.all([
+      db.doc("lessons/" + TODAY).get(),
+      db.collection("lessons").orderBy("date", "desc").limit(1).get(),
+      db.collection("sessions").limit(400).get(),
+      db.collection("words").limit(800).get(),
+      db.collection("vocab").limit(800).get()
+    ]).then(function (r) {
+      clearTimeout(timer);
+      allSessions = snapDocs(r[2]).map(function (s) { return JSON.parse(JSON.stringify(s)); });
+      snapDocs(r[3]).forEach(function (t) { if (t.word) troub[t.word] = JSON.parse(JSON.stringify(t)); });
+      snapDocs(r[4]).forEach(function (v) { if (v.word) vocabDocs[docId(v.word)] = JSON.parse(JSON.stringify(v)); });
+      var mine = allSessions.filter(function (s) { return s.date === TODAY; })[0];
+      if (r[0].exists) { lesson = r[0].data(); lessonIsToday = true; }
+      else { var last = snapDocs(r[1])[0]; if (last) { lesson = last; lessonIsToday = false; } }
+      if (mine && lesson && mine.lesson === lesson.date) session = { date: TODAY, reads: mine.reads || {}, missed: mine.missed || [], drills: mine.drills || {}, speak: mine.speak || "" };
+      if (lesson) {
+        renderLesson(); seedVocab();
+        if (session.speak) { $("speak-text").textContent = session.speak; $("speak-fb").disabled = !sample; }
+        if (!lessonIsToday) { status("Today's story is not ready yet. This is the latest one. You can also create today's story now."); $("make-lesson").hidden = !sample; }
+      } else {
+        $("lesson-title").textContent = "No story yet"; $("story-hint").textContent = "Your first story has not arrived. Create one now.";
+        $("make-lesson").hidden = !sample;
+      }
+      renderDue(); renderHard(); renderProgress();
+    }).catch(function (e) { clearTimeout(timer); status("Your lessons could not be loaded (" + (e && e.code || "error") + "). Reload the page to try again."); });
+  }
+  if (!window.claude || !window.claude.use) { status("Open this page inside Claude to load your lessons and use the microphone."); $("lesson-title").textContent = "Lessons load inside Claude"; return; }
+  var use = window.claude.use.bind(window.claude);
+  use("tts").then(function (t) { tts = t; });
+  use("dictation").then(function (d) { dict = d; if (d) wireDictation(); else status("Reading aloud needs a microphone view: open this page in Chrome or in the main window of the Claude desktop app. Listening and exercises work here."); });
+  use("sample").then(function (s) { sample = s; if (lesson) { renderFix(); if (!lessonIsToday) $("make-lesson").hidden = !s; if (session.speak) $("speak-fb").disabled = !s; } else if ($("lesson-title").textContent === "No story yet") $("make-lesson").hidden = !s; });
+  use("db").then(function (d) { db = d; if (!d) { status("Your lessons could not be opened. Sign in to Claude and open the page again."); $("lesson-title").textContent = "Lessons unavailable"; return; } load(); });
+})();
+</script>
+</body>
+</html>

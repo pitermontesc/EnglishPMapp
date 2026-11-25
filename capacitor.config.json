@@ -1,0 +1,11 @@
+{
+  "appId": "com.dailyenglish.app",
+  "appName": "Daily English",
+  "webDir": "dist",
+  "ios": {
+    "contentInset": "never"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

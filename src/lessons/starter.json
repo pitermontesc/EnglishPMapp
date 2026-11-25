@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-24",
+  "source": "bundled",
+  "title": "The Bug That Only Appeared on Fridays",
+  "level": "C1 + C2 words",
+  "topic": "software and QA work",
+  "sentences": [
+    "Every Friday afternoon, our checkout page slowed to a crawl, and nobody on the team could explain why.",
+    "At first we blamed the network, then the database, and finally the unlucky intern who had merged the last change.",
+    "I decided to approach the problem methodically instead of chasing every rumor that drifted through the team chat.",
+    "After comparing the logs from several weeks, I noticed a pattern that was almost too subtle to see.",
+    "A scheduled report, written years ago by someone long gone, ran every Friday and quietly locked the main orders table.",
+    "Its behavior was so idiosyncratic that our monitoring tools had simply learned to ignore it.",
+    "The original author had left a cryptic comment promising to fix the query later, which of course never happened.",
+    "Rewriting that report felt daunting, but leaving it untouched was no longer a tenable option for the business.",
+    "We split the work into small, verifiable steps and wrote tests that reproduced the slowdown on demand.",
+    "When the fix shipped, the Friday complaints vanished, and my manager admitted the solution was surprisingly elegant.",
+    "Since then, I treat every mysterious bug as a puzzle rather than a nuisance, and I document my reasoning meticulously."
+  ],
+  "vocab": [
+    { "word": "idiosyncratic", "inStory": "idiosyncratic", "ipa": "/ˌɪdioʊsɪŋˈkrætɪk/", "say": "i-di-o-sin-KRA-tik", "pos": "adjective", "level": "C2", "meaning": "peculiar to one person or thing; unusual and individual", "es": "peculiar, idiosincrásico", "example": "Her idiosyncratic naming style made the old code hard to follow." },
+    { "word": "tenable", "inStory": "tenable", "ipa": "/ˈtɛnəbəl/", "say": "TE-ne-bel", "pos": "adjective", "level": "C2", "meaning": "able to be defended or maintained", "es": "sostenible, defendible", "example": "Shipping without regression tests is not a tenable strategy." },
+    { "word": "cryptic", "inStory": "cryptic", "ipa": "/ˈkrɪptɪk/", "say": "KRIP-tik", "pos": "adjective", "level": "C2", "meaning": "mysterious and hard to understand", "es": "críptico, enigmático", "example": "The error message was so cryptic that we had to read the source code." },
+    { "word": "meticulously", "inStory": "meticulously", "ipa": "/məˈtɪkjələsli/", "say": "me-TI-kiu-les-li", "pos": "adverb", "level": "C2", "meaning": "with great care and attention to every detail", "es": "meticulosamente", "example": "She meticulously checked every edge case before signing off." },
+    { "word": "methodically", "inStory": "methodically", "ipa": "/məˈθɑdɪkli/", "say": "me-THA-dik-li (TH como en think)", "pos": "adverb", "level": "C1", "meaning": "in an orderly, systematic way", "es": "metódicamente", "example": "He worked through the checklist methodically, one item at a time." },
+    { "word": "daunting", "inStory": "daunting", "ipa": "/ˈdɔntɪŋ/", "say": "DON-ting", "pos": "adjective", "level": "C1", "meaning": "seeming difficult and likely to discourage you", "es": "abrumador, intimidante", "example": "Migrating the whole test suite looked daunting at first." },
+    { "word": "nuisance", "inStory": "nuisance", "ipa": "/ˈnusəns/", "say": "NU-sens", "pos": "noun", "level": "C1", "meaning": "something annoying or causing trouble", "es": "molestia, fastidio", "example": "The flaky test had become a real nuisance for the whole team." }
+  ],
+  "focus": {
+    "title": "The two TH sounds: /θ/ and /ð/",
+    "tip": "Para /θ/ (through, methodically) pon la punta de la lengua entre los dientes y sopla aire sin voz, como la 'z' de España. Para /ð/ (the, then, that) haz lo mismo pero haciendo vibrar la voz; no la conviertas en una 'd' dura.",
+    "items": [
+      { "text": "through / true", "note": "/θru/ · tongue out, no voice" },
+      { "text": "then / den", "note": "/ðɛn/ · tongue out, with voice" },
+      { "text": "methodically", "note": "/məˈθɑdɪkli/ · soft TH, stress THA" },
+      { "text": "the network", "note": "/ðə ˈnɛtwɝk/ · quick voiced TH" },
+      { "text": "author", "note": "/ˈɔθɚ/ · TH, not T" },
+      { "text": "rather than", "note": "/ˈræðɚ ðæn/ · two voiced THs" }
+    ]
+  },
+  "drills": [
+    { "prompt": "The old report's behavior was so ____ that the monitoring tools ignored it.", "options": ["idiosyncratic", "tenable", "daunting", "meticulous"], "answer": "idiosyncratic", "why": "Idiosyncratic means peculiar to one thing, unlike anything else." },
+    { "prompt": "Keeping the slow report was no longer a ____ option for the business.", "options": ["cryptic", "tenable", "nuisance", "methodical"], "answer": "tenable", "why": "Tenable means it could still be defended or maintained." },
+    { "prompt": "The author left a ____ comment that nobody could fully understand.", "options": ["daunting", "tenable", "cryptic", "meticulous"], "answer": "cryptic", "why": "Cryptic means mysterious and hard to understand." },
+    { "prompt": "Rewriting a system you did not build can feel ____ at first.", "options": ["daunting", "idiosyncratic", "cryptic", "tenable"], "answer": "daunting", "why": "Daunting describes a task that looks hard enough to discourage you." }
+  ],
+  "speak": "Describe a problem at work or at home that you solved by being patient and methodical. What did you learn from it?"
+}
