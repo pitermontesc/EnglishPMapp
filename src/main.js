@@ -12,7 +12,7 @@ import "@fontsource/newsreader/600.css";
 import "@fontsource/newsreader/400-italic.css";
 import "./styles.css";
 
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, CapacitorHttp } from "@capacitor/core";
 import { openStore, store, getSetting, setSettings } from "./platform/storage.js";
 import { createDictation, diag } from "./platform/speech.js";
 import { speak, stop as stopSpeech, ttsAvailable } from "./platform/tts.js";
@@ -804,6 +804,12 @@ async function init() {
     let n = 0;
     const next = () => { if (n >= 4) { diag("diag run done"); return; } diag("auto read sentence " + (n + 1)); readFrom(n++); };
     setTimeout(() => { next(); setTimeout(function loop() { if (n < 4) { if (!rec && !flow) { next(); } setTimeout(loop, 3000); } }, 4000); }, 6000);
+    // The test speaker can press "Stop" for the learner: GET /cmd answers "stop" once.
+    setInterval(() => {
+      CapacitorHttp.get({ url: "http://127.0.0.1:47613/cmd" }).then((r) => {
+        if (String(r.data).trim() === "stop" && rec) { diag("diag: manual stop pressed"); stopRec("manual"); }
+      }).catch(() => {});
+    }, 100);
   }
   if (!dict && $("status").hidden) status(micHelp() + " Listening and exercises work here.", { key: "nomic" });
 
