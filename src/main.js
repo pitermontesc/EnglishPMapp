@@ -125,7 +125,8 @@ function startRec(o) {
   if (!dict) { status(micHelp(), { key: "nomic" }); return false; }
   if (rec) return false; // the previous take is still closing
   stopAudio();
-  rec = Object.assign({ buf: "", interim: "", how: "auto", spoke: false, timers: {} }, o);
+  rec = Object.assign({ buf: "", interim: "", how: "auto", spoke: false, stopping: false, restarts: 0, timers: {} }, o);
+  rec.deadline = Date.now() + (10000 + (o.target ? o.target.length : 0) * 1200) * pauseFactor();
   if (o.onRecState) o.onRecState(true);
   else { rec.label = o.btn.innerHTML; o.btn.textContent = "Stop"; o.btn.classList.add("rec"); }
   if (o.live) { o.live.textContent = "Listening…"; o.live.classList.add("listening"); }
@@ -138,13 +139,13 @@ function startRec(o) {
 }
 function stopRec(how) {
   if (!rec) return;
-  rec.how = how;
+  rec.how = how; rec.stopping = true;
   Object.values(rec.timers).forEach(clearTimeout);
   dict.stop().catch(() => {});
 }
 // How long the microphone waits in silence before closing the take (Settings → Reading).
 const PAUSES = { short: 0.6, normal: 1, long: 1.6 };
-function pauseFactor() { return PAUSES[getSetting("pause", "normal")] || 1; }
+function pauseFactor() { return PAUSES[getSetting("pause", "long")] || 1; }
 function heardSoFar() { return rec ? (rec.buf + " " + rec.interim).trim() : ""; }
 function onHeard() {
   if (!rec) return;
@@ -164,6 +165,15 @@ function onHeard() {
 }
 function finishRec(reason) {
   if (!rec) return;
+  // The recognizer sometimes closes by itself during a pause (Apple's and Chrome's do).
+  // If the app did not ask it to stop, reopen it and keep what was already heard.
+  if (rec.target && !rec.stopping && reason !== "not_granted" && reason !== "no_microphone"
+      && rec.restarts < 8 && Date.now() < rec.deadline) {
+    const r = rec;
+    r.buf = (r.buf + " " + r.interim).trim(); r.interim = ""; r.restarts++;
+    dict.start({ language: "en" }).catch((e) => { if (rec === r) { r.stopping = true; finishRec(e && e.code); } });
+    return;
+  }
   const r = rec; rec = null;
   Object.values(r.timers).forEach(clearTimeout);
   if (r.onRecState) r.onRecState(false);
@@ -661,7 +671,7 @@ function renderSettings() {
   sel.value = getSetting("model", DEFAULT_MODEL);
   $("set-key").value = getSetting("apiKey", "");
   $("set-auto").checked = getSetting("autoLesson", true);
-  $("set-pause").value = getSetting("pause", "normal");
+  $("set-pause").value = getSetting("pause", "long");
   const info = $("dev-info"); info.textContent = "";
   const platformName = { web: "Web browser", ios: "Mac app" }[PLATFORM] || PLATFORM;
   [
