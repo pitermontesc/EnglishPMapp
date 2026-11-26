@@ -1,5 +1,6 @@
 // Speech-to-text with one interface for every platform:
-//   start() / stop(), and callbacks onFinal({text}), onPartial({text}), onState({state:"idle", reason}).
+//   start() / stop(), and callbacks onFinal({text}), onPartial({text}), onState({state:"idle", reason}),
+//   onLevel({level}) with the microphone level 0..1 about 15 times a second (Mac app only).
 // The Mac app uses Apple's speech recognizer; the web build uses Chrome's Web Speech API.
 import { Capacitor, CapacitorHttp } from "@capacitor/core";
 import { SpeechRecognition } from "@capgo/capacitor-speech-recognition";
@@ -21,13 +22,14 @@ export async function createDictation() {
 }
 
 function handlers() {
-  const h = { final() {}, partial() {}, state() {} };
+  const h = { final() {}, partial() {}, state() {}, level() {} };
   return {
     h,
     api: {
       onFinal(fn) { h.final = fn; },
       onPartial(fn) { h.partial = fn; },
       onState(fn) { h.state = fn; },
+      onLevel(fn) { h.level = fn; },
     },
   };
 }
@@ -53,6 +55,7 @@ async function nativeDictation() {
     text = e.accumulatedText || [e.accumulated, current].filter(Boolean).join(" ");
     h.partial({ text });
   });
+  await SpeechRecognition.addListener("audioLevel", (e) => { if (active) h.level({ level: Number(e.level) || 0 }); });
   await SpeechRecognition.addListener("listeningState", (e) => {
     diag("native state", e);
     if (e.state === "stopped" || e.status === "stopped") finish();

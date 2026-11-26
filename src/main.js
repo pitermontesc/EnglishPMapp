@@ -12,7 +12,7 @@ import "@fontsource/newsreader/600.css";
 import "@fontsource/newsreader/400-italic.css";
 import "./styles.css";
 
-import { Capacitor, CapacitorHttp } from "@capacitor/core";
+import { Capacitor } from "@capacitor/core";
 import { openStore, store, getSetting, setSettings } from "./platform/storage.js";
 import { createDictation, diag } from "./platform/speech.js";
 import { speak, stop as stopSpeech, ttsAvailable } from "./platform/tts.js";
@@ -149,13 +149,13 @@ function startRec(o) {
   if (!dict) { status(micHelp(), { key: "nomic" }); return false; }
   if (rec) return false; // the previous take is still closing
   stopAudio();
-  rec = Object.assign({ buf: "", interim: "", how: "auto", spoke: false, stopping: false, restarts: 0, okSet: new Set(), bestOk: -1, bestText: "", timers: {} }, o);
+  rec = Object.assign({ buf: "", interim: "", how: "auto", spoke: false, stopping: false, restarts: 0, okSet: new Set(), bestOk: -1, bestText: "", timers: {}, floor: null, lastVoice: 0, levels: false, voice: false }, o);
   rec.deadline = Date.now() + (10000 + (o.target ? o.target.length : 0) * 1200) * pauseFactor();
   if (o.onRecState) o.onRecState(true);
   else { rec.label = o.btn.innerHTML; o.btn.textContent = "Stop"; o.btn.classList.add("rec"); }
   if (o.live) { o.live.textContent = "Listening…"; o.live.classList.add("listening"); }
   if (o.target) {
-    rec.timers.quiet = setTimeout(() => stopRec("auto"), 10000 * pauseFactor()); // nothing said at all
+    rec.timers.quiet = setTimeout(() => stopWhenQuiet("quiet"), 10000 * pauseFactor()); // nothing said at all
     rec.timers.max = setTimeout(() => stopRec("auto"), (10000 + o.target.length * 1200) * pauseFactor());
   }
   diag("app start take", o.key, o.target ? o.target.join(" ") : "");
@@ -203,7 +203,30 @@ function onHeard() {
   clearTimeout(rec.timers.silence);
   const wait = (finished ? 1000 : coverage >= 0.5 ? 2400 : 3400) * pauseFactor();
   diag("app heard", text, { finished, coverage: +coverage.toFixed(2), wait });
-  rec.timers.silence = setTimeout(() => stopRec("auto"), wait);
+  rec.timers.silence = setTimeout(() => stopWhenQuiet("silence"), wait);
+}
+// Apple's text can arrive seconds late (its recognizer runs on Apple's servers), so a pause
+// in the text is not proof of silence. In the Mac app the microphone level decides: the take
+// closes only once the learner's voice has really been quiet for a moment.
+const VOICE_ABOVE_NOISE = 0.15; // level 0..1 is -50..0 dBFS, so 0.15 is 7.5 dB over the room
+function onLevel(level) {
+  if (!rec || rec.stopping) return;
+  rec.levels = true;
+  if (rec.floor == null || level < rec.floor) rec.floor = level;
+  else rec.floor += (level - rec.floor) * 0.002; // the room's noise, rising slowly if it gets louder
+  const voice = level > rec.floor + VOICE_ABOVE_NOISE;
+  if (voice) rec.lastVoice = Date.now();
+  if (voice !== rec.voice) { rec.voice = voice; diag("app voice", voice ? "on" : "off", { level: +level.toFixed(2), floor: +rec.floor.toFixed(2) }); }
+}
+function stopWhenQuiet(why) {
+  if (!rec || rec.stopping) return;
+  const hold = 1000 * pauseFactor(), since = Date.now() - rec.lastVoice;
+  if (rec.levels && since < hold) {
+    diag("app keeps listening: voice heard " + since + " ms ago", why);
+    rec.timers[why] = setTimeout(() => stopWhenQuiet(why), hold - since + 100);
+    return;
+  }
+  stopRec("auto");
 }
 function finishRec(reason) {
   if (!rec) return;
@@ -251,7 +274,11 @@ function toggleRec(o) {
 }
 function wireDictation() {
   dict.onFinal((e) => { if (rec) { rec.buf = (rec.buf + " " + e.text).trim(); rec.interim = ""; onHeard(); } });
-  dict.onPartial((e) => { if (rec) { rec.interim = e.text || ""; onHeard(); } });
+  dict.onPartial((e) => {
+    if (!rec) return;
+    rec.interim = e.text || ""; onHeard();
+  });
+  dict.onLevel((e) => onLevel(e.level));
   dict.onState((e) => { if (e.state === "idle") finishRec(e.reason); });
 }
 
@@ -809,18 +836,6 @@ async function init() {
   if (dict) wireDictation();
   loadFromStore();
   route();
-  if (import.meta.env.VITE_DIAG === "1") {
-    prefs.handsFree = false; prefs.listenFirst = false;
-    let n = 0;
-    const next = () => { if (n >= 4) { diag("diag run done"); return; } diag("auto read sentence " + (n + 1)); readFrom(n++); };
-    setTimeout(() => { next(); setTimeout(function loop() { if (n < 4) { if (!rec && !flow) { next(); } setTimeout(loop, 3000); } }, 4000); }, 6000);
-    // The test speaker can press "Stop" for the learner: GET /cmd answers "stop" once.
-    setInterval(() => {
-      CapacitorHttp.get({ url: "http://127.0.0.1:47613/cmd" }).then((r) => {
-        if (String(r.data).trim() === "stop" && rec) { diag("diag: manual stop pressed"); stopRec("manual"); }
-      }).catch(() => {});
-    }, 100);
-  }
   if (!dict && $("status").hidden) status(micHelp() + " Listening and exercises work here.", { key: "nomic" });
 
   if (PLATFORM === "web" && "serviceWorker" in navigator && import.meta.env.PROD) {
