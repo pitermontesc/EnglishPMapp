@@ -19,63 +19,13 @@ import { speak, stop as stopSpeech, ttsAvailable } from "./platform/tts.js";
 import { createAI, MODELS, DEFAULT_MODEL } from "./platform/ai.js";
 import { saveTextFile } from "./platform/files.js";
 import STARTER from "./lessons/starter.json";
+import { norm, words, docId, align, alignPrefix, expectedPhrases as phrasesOf, accuracy as accuracyOf, percent, grade, dateKey, addDays, nextReview, streak as streakOf } from "./core/text.js";
+import { pauseFactor as factorOf, takeProgress, silenceWait, createVoiceMeter, bestShown } from "./core/take.js";
 
 const $ = (id) => document.getElementById(id);
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-function pad(n) { return (n < 10 ? "0" : "") + n; }
-function dateKey(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
-function addDays(key, n) { const p = key.split("-"); const d = new Date(+p[0], +p[1] - 1, +p[2]); d.setDate(d.getDate() + n); return dateKey(d); }
 const TODAY = dateKey(new Date());
-const INTERVALS = [1, 3, 7, 14, 30];
 const PLATFORM = Capacitor.getPlatform(); // "web" or "ios" (the Mac app is the iOS build running on Apple Silicon)
-
-// ---------- pure text helpers ----------
-function norm(w) { return String(w).toLowerCase().replace(/[‘’]/g, "'").replace(/[^a-z0-9']/g, "").replace(/^'+|'+$/g, ""); }
-function words(text) { return String(text).split(/[\s—–\-/]+/).map(norm).filter(Boolean); }
-function docId(w) { return norm(w).replace(/[^a-z0-9]/g, "_") || "_"; }
-// Align what was heard against the target sentence (edit distance with backtrace).
-function align(target, heard) {
-  const n = target.length, m = heard.length, dp = [];
-  let i, j;
-  for (i = 0; i <= n; i++) { dp.push(new Array(m + 1)); dp[i][0] = i; }
-  for (j = 0; j <= m; j++) dp[0][j] = j;
-  for (i = 1; i <= n; i++) for (j = 1; j <= m; j++) {
-    const c = target[i - 1] === heard[j - 1] ? 0 : 1;
-    dp[i][j] = Math.min(dp[i - 1][j - 1] + c, dp[i - 1][j] + 1, dp[i][j - 1] + 1);
-  }
-  const res = new Array(n); i = n; j = m;
-  while (i > 0) {
-    if (j > 0 && target[i - 1] === heard[j - 1] && dp[i][j] === dp[i - 1][j - 1]) { res[i - 1] = { ok: true }; i--; j--; }
-    else if (j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) { res[i - 1] = { ok: false, heard: heard[j - 1] }; i--; j--; }
-    else if (dp[i][j] === dp[i - 1][j] + 1) { res[i - 1] = { ok: false, heard: "" }; i--; }
-    else { j--; }
-  }
-  return res;
-}
-// Same, for speech still in progress: the heard words are matched against the start of the
-// sentence only, so words not read yet are "pending" instead of pulling the alignment apart.
-function alignPrefix(target, heard) {
-  const n = target.length, m = heard.length, dp = [];
-  let i, j;
-  for (i = 0; i <= n; i++) { dp.push(new Array(m + 1)); dp[i][0] = i; }
-  for (j = 0; j <= m; j++) dp[0][j] = j;
-  for (i = 1; i <= n; i++) for (j = 1; j <= m; j++) {
-    const c = target[i - 1] === heard[j - 1] ? 0 : 1;
-    dp[i][j] = Math.min(dp[i - 1][j - 1] + c, dp[i - 1][j] + 1, dp[i][j - 1] + 1);
-  }
-  let end = 0;
-  for (i = 1; i <= n; i++) if (dp[i][m] <= dp[end][m]) end = i;
-  const res = new Array(n);
-  for (i = end; i < n; i++) res[i] = { ok: false, heard: "", pending: true };
-  i = end; j = m;
-  while (i > 0) {
-    if (j > 0 && target[i - 1] === heard[j - 1] && dp[i][j] === dp[i - 1][j - 1]) { res[i - 1] = { ok: true }; i--; j--; }
-    else if (j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) { res[i - 1] = { ok: false, heard: heard[j - 1] }; i--; j--; }
-    else if (dp[i][j] === dp[i - 1][j] + 1) { res[i - 1] = { ok: false, heard: "" }; i--; }
-    else { j--; }
-  }
-  return res;
-}
 
 // ---------- state ----------
 let dict = null, sample = null;
@@ -151,7 +101,7 @@ function startRec(o) {
   if (!dict) { status(micHelp(), { key: "nomic" }); return false; }
   if (rec) return false; // the previous take is still closing
   stopAudio();
-  rec = Object.assign({ buf: "", interim: "", how: "auto", spoke: false, stopping: false, restarts: 0, okSet: new Set(), bestOk: -1, bestText: "", timers: {}, floor: null, lastVoice: 0, levels: false, voice: false }, o);
+  rec = Object.assign({ buf: "", interim: "", how: "auto", spoke: false, stopping: false, restarts: 0, okSet: new Set(), bestOk: -1, bestText: "", timers: {}, meter: createVoiceMeter() }, o);
   rec.deadline = Date.now() + (10000 + (o.target ? o.target.length : 0) * 1200) * pauseFactor();
   if (o.onRecState) o.onRecState("rec");
   else { rec.label = o.btn.innerHTML; o.btn.textContent = "Stop"; o.btn.classList.add("rec"); }
@@ -177,67 +127,49 @@ function stopRec(how, why) {
   dict.stop().catch(() => {});
 }
 // How long the microphone waits in silence before closing the take (Settings → Reading).
-const PAUSES = { short: 0.6, normal: 1, long: 1.6 };
-function pauseFactor() { return PAUSES[getSetting("pause", "long")] || 1; }
+function pauseFactor() { return factorOf(getSetting("pause", "long")); }
 // The sentence and its words, so Apple's recognizer expects them (Settings → Reading).
-function expectedPhrases(text) {
-  if (!getSetting("expectWords", true)) return [];
-  const clean = (w) => w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, "");
-  const list = [String(text).replace(/[“”"]/g, "").trim()];
-  String(text).split(/[\s—–/]+/).map(clean).forEach((w) => { if (w && list.indexOf(w) < 0) list.push(w); });
-  return list;
-}
+function expectedPhrases(text) { return getSetting("expectWords", true) ? phrasesOf(text) : []; }
 function heardSoFar() { return rec ? (rec.buf + " " + rec.interim).trim() : ""; }
 function onHeard() {
   if (!rec) return;
   const text = heardSoFar();
   if (rec.onLive) rec.onLive(text);
   else if (rec.live) rec.live.textContent = text || "Listening…";
-  if (rec.target && text) {
-    let okCount = 0;
-    alignPrefix(rec.target, words(text)).forEach((r, i) => { if (r.ok) { rec.okSet.add(i); okCount++; } });
-    if (okCount >= rec.bestOk) { rec.bestOk = okCount; rec.bestText = text; }
-  }
-  if (!rec.target || !text || rec.stopping) return; // results that arrive while closing only update the text
-  if (!rec.spoke) { rec.spoke = true; clearTimeout(rec.timers.quiet); }
-  const heard = words(text), res = alignPrefix(rec.target, heard);
+  if (!rec.target || !text) return;
   // Apple re-ranks its text when the take ends and sometimes drops or changes a word it had
   // already recognized (most often the last one). Keep every word recognized at any moment.
-  const last = res[res.length - 1];
-  const coverage = heard.length / rec.target.length;
-  // "Finished" only when the sentence's last word is also the last word heard.
-  const finished = last && last.ok && heard[heard.length - 1] === rec.target[rec.target.length - 1] && coverage >= 0.75;
+  const p = takeProgress(rec.target, words(text));
+  p.okIdx.forEach((i) => rec.okSet.add(i));
+  if (p.okIdx.length >= rec.bestOk) { rec.bestOk = p.okIdx.length; rec.bestText = text; }
+  if (rec.stopping) return; // results that arrive while closing only update the text
+  if (!rec.spoke) { rec.spoke = true; clearTimeout(rec.timers.quiet); }
   clearTimeout(rec.timers.silence);
-  const wait = (finished ? 1000 : coverage >= 0.5 ? 2400 : 3400) * pauseFactor();
-  diag("app heard", text, { finished, coverage: +coverage.toFixed(2), wait });
+  const wait = silenceWait(p.finished, p.coverage, pauseFactor());
+  diag("app heard", text, { finished: p.finished, coverage: +p.coverage.toFixed(2), wait });
   rec.timers.silence = setTimeout(() => stopWhenQuiet("silence"), wait);
 }
 // Apple's text can arrive seconds late (its recognizer runs on Apple's servers), so a pause
 // in the text is not proof of silence. In the Mac app the microphone level decides: the take
 // closes only once the learner's voice has really been quiet for a moment.
-const VOICE_ABOVE_NOISE = 0.15; // level 0..1 is -50..0 dBFS, so 0.15 is 7.5 dB over the room
 function onLevel(level) {
   if (!rec || rec.stopping) return;
-  rec.levels = true;
-  if (rec.floor == null || level < rec.floor) rec.floor = level;
-  else rec.floor += (level - rec.floor) * 0.002; // the room's noise, rising slowly if it gets louder
-  const voice = level > rec.floor + VOICE_ABOVE_NOISE;
-  if (voice) rec.lastVoice = Date.now();
+  const v = rec.meter.update(level, Date.now());
   // The button's ring follows the voice, so the learner can see the microphone hearing them.
   rec.btn.classList.add("metered");
-  rec.btn.style.setProperty("--lvl", Math.max(0, Math.min(1, (level - rec.floor) / 0.35)).toFixed(2));
-  if (voice && rec.live && !heardSoFar() && !rec.hearing) { rec.hearing = true; rec.live.textContent = "Hearing you…"; }
-  if (voice !== rec.voice) { rec.voice = voice; diag("app voice", voice ? "on" : "off", { level: +level.toFixed(2), floor: +rec.floor.toFixed(2) }); }
+  rec.btn.style.setProperty("--lvl", v.ring.toFixed(2));
+  if (v.voice && rec.live && !heardSoFar() && !rec.hearing) { rec.hearing = true; rec.live.textContent = "Hearing you…"; }
+  if (v.changed) diag("app voice", v.voice ? "on" : "off", { level: +level.toFixed(2), floor: +rec.meter.floor.toFixed(2) });
 }
 function stopWhenQuiet(why) {
   if (!rec || rec.stopping) return;
-  const hold = 1000 * pauseFactor(), since = Date.now() - rec.lastVoice;
-  if (rec.levels && since < hold) {
-    diag("app keeps listening: voice heard " + since + " ms ago", why);
-    rec.timers[why] = setTimeout(() => stopWhenQuiet(why), hold - since + 100);
+  const now = Date.now(), q = rec.meter.quietFor(now, 1000 * pauseFactor());
+  if (!q.quiet) {
+    diag("app keeps listening: voice heard " + (now - rec.meter.lastVoice) + " ms ago", why);
+    rec.timers[why] = setTimeout(() => stopWhenQuiet(why), q.waitMore);
     return;
   }
-  stopRec("auto", why + " timer, voice quiet for " + since + " ms" + (rec.levels ? "" : " (no mic level)"));
+  stopRec("auto", why + " timer" + (rec.meter.hasLevels ? ", voice quiet for " + (now - rec.meter.lastVoice) + " ms" : " (no mic level)"));
 }
 function finishRec(reason) {
   if (!rec) return;
@@ -277,11 +209,7 @@ function finishRec(reason) {
   }
   status("");
   // Show and grade Apple's most complete version of the take when the final text lost words.
-  let shown = text;
-  if (r.target && r.bestText) {
-    const finalOk = align(r.target, words(text)).filter((x) => x.ok).length;
-    if (r.bestOk > finalOk) shown = r.bestText;
-  }
+  const shown = bestShown(r.target, text, words(text), r.bestText, r.bestOk);
   diag("app grade", shown, shown !== text ? "(final was: " + text + ")" : "");
   r.done(shown, r.how, Array.from(r.okSet));
 }
@@ -478,7 +406,7 @@ function paintSentence(li, text, heardText, okIdx) {
     parts.forEach((w) => { const at = k++, r = res[at]; if ((r && r.ok) || seen.has(at)) hit++; else { ok = false; missed.push({ word: w, heard: r ? r.heard : "" }); } });
     sp.classList.remove("ok", "miss"); sp.classList.add(ok ? "ok" : "miss");
   });
-  const pct = target.length ? Math.floor(100 * hit / target.length) : 0;
+  const pct = percent(hit, target.length);
   li._score.hidden = false; li._score.textContent = pct + "%";
   li._score.className = "chip score " + grade(pct);
   li._live.textContent = ""; li._live.classList.remove("idle", "listening"); li._live.append("Heard: ", el("b", "", heardText));
@@ -541,7 +469,7 @@ function wireReader() {
     else if (e.key === "l" || e.key === "L") { e.preventDefault(); $("r-listen").click(); }
   });
 }
-function accuracy(s) { let h = 0, t = 0; Object.keys(s.reads || {}).forEach((k) => { h += s.reads[k].hit; t += s.reads[k].total; }); return t ? Math.floor(100 * h / t) : null; } // floor: 100% only when every word was understood
+function accuracy(s) { return accuracyOf(s.reads); }
 function updateAcc() {
   const a = accuracy(session), n = Object.keys(session.reads).length, c = $("acc-chip");
   renderDone(); renderPlan();
@@ -549,7 +477,6 @@ function updateAcc() {
   c.textContent = a + "% understood · " + n + "/" + (lesson.sentences || []).length + " sentences";
   c.className = "chip " + (a >= 90 ? "good" : a >= 70 ? "mark" : "miss");
 }
-function grade(pct) { return pct >= 90 ? "good" : pct >= 70 ? "mark" : "miss"; }
 // Shown under the story once every sentence has a result.
 function renderDone() {
   const n = count(), read = Object.keys(session.reads).length, box = $("story-done");
@@ -612,7 +539,7 @@ function wordRow(t) {
       const ok = words(text).indexOf(t.word) >= 0;
       if (ok) { t.hits = (t.hits || 0) + 1; saveWord(t.word); }
       live.textContent = ok ? "Understood: “" + t.word + "”. Well done." : "Heard “" + text + "”. Listen again and retry.";
-      renderProgress();
+      renderProgress(); renderPlan();
     } });
   };
   head.append(b1, b2); row.append(head, live);
@@ -702,8 +629,7 @@ function seedVocab() {
 }
 function gradeVocab(v, knew) {
   const id = docId(v.word); let d = vocabDocs[id]; if (!d) return;
-  const step = knew ? (d.step || 0) + 1 : 0;
-  d = vocabDocs[id] = Object.assign({}, d, { step, due: addDays(TODAY, knew ? INTERVALS[Math.min(step, INTERVALS.length - 1)] : 1), lastReview: TODAY });
+  d = vocabDocs[id] = Object.assign({}, d, nextReview(d.step, knew, TODAY), { lastReview: TODAY });
   save("vocab", id, d);
   renderDue(); renderProgress();
 }
@@ -729,7 +655,7 @@ function renderDrills() {
 function updateDrillChip() {
   const ds = lesson.drills || []; let done = 0, ok = 0;
   ds.forEach((d, i) => { if (session.drills[i] != null) { done++; if (session.drills[i] === d.answer) ok++; } });
-  $("drill-chip").textContent = done ? ok + "/" + ds.length + " correct" : ds.length + " questions";
+  $("drill-chip").textContent = !done ? ds.length + " questions" : done < ds.length ? done + "/" + ds.length + " answered" : ok + "/" + ds.length + " correct";
   $("drill-chip").className = "chip" + (done === ds.length && ds.length ? (ok === ds.length ? " good" : " mark") : "");
   renderPlan();
 }
@@ -775,10 +701,7 @@ function renderHard() {
   const list = hardList().slice(0, 12), box = $("hard-list"); box.textContent = ""; $("hard-empty").hidden = list.length > 0;
   list.forEach((t) => box.appendChild(wordRow(t)));
 }
-function streak() {
-  const days = {}; allSessions.forEach((s) => { if (s.accuracy != null) days[s.date] = 1; });
-  let d = days[TODAY] ? TODAY : addDays(TODAY, -1), n = 0; while (days[d]) { n++; d = addDays(d, -1); } return n;
-}
+function streak() { return streakOf(allSessions.filter((s) => s.accuracy != null).map((s) => s.date), TODAY); }
 function renderProgress() {
   const done = allSessions.filter((s) => s.accuracy != null).sort((a, b) => (a.date < b.date ? 1 : -1));
   const st = streak();

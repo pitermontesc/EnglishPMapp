@@ -21,7 +21,7 @@ if (!NATIVE && "speechSynthesis" in window) {
 }
 
 // Long text is spoken sentence by sentence: Chrome cuts off single utterances after ~15 s.
-function chunks(text) {
+export function chunks(text) {
   return String(text).match(/[^.!?]+[.!?]*["”’)]*\s*/g) || [String(text)];
 }
 

@@ -86,11 +86,28 @@ No publiques la versión web con una clave escrita en el código: cada persona p
 Los datos viven en cada dispositivo. Para pasar el progreso a otro: Settings → **Export backup**,
 y en el otro dispositivo **Import backup**.
 
+## Pruebas
+
+```bash
+npm test           # pruebas de unidad (Vitest): alineación de palabras, cuándo termina una lectura,
+                   # detección de voz, puntajes y repaso, micrófono de Mac y de Chrome, datos, Claude y voz
+npm run test:e2e   # simulacro de un día completo en Chrome, con conversación incluida
+```
+
+El simulacro abre la app compilada en Chrome sin ventana, con un micrófono falso que "dice" frases
+preparadas, una voz falsa y un Claude falso que responde en streaming como la API. Lee la historia con
+un error, practica la palabra, responde los ejercicios, mantiene la conversación de *Speak freely* con
+feedback, revisa el progreso y reabre la app. No usa la red ni el micrófono real. Necesita Google Chrome
+(o la ruta en `CHROME_PATH`).
+
 ## Estructura
 
 ```
 index.html                 interfaz
 src/main.js                lógica de la app (lecciones, lectura, repaso, progreso, ajustes)
+src/core/                  lógica pura con pruebas: texto y puntajes (text.js), fin de cada lectura (take.js)
+tests/unit/                pruebas de unidad (Vitest)
+tests/e2e/session.mjs      simulacro de un día completo con conversación (Chrome)
 src/styles.css             estilos (claro/oscuro, márgenes seguros para notch)
 src/platform/              adaptadores: storage, speech, tts, ai, files
 src/lessons/starter.json   historia incluida para usar la app sin clave

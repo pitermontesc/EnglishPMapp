@@ -45,13 +45,17 @@ export function createAI(apiKey, model) {
   }
 
   async function askJSON(prompt, opts = {}) {
-    const text = await ask(prompt, { effort: opts.effort || "medium" });
-    const start = text.indexOf("{"), end = text.lastIndexOf("}");
-    if (start < 0 || end <= start) throw { code: "invalid_json" };
-    try { return JSON.parse(text.slice(start, end + 1)); } catch (e) { throw { code: "invalid_json" }; }
+    return parseJSONReply(await ask(prompt, { effort: opts.effort || "medium" }));
   }
 
   return { ask, askJSON, model: chosen };
+}
+
+// The JSON object in a reply, even when Claude wraps it in a sentence or a code fence.
+export function parseJSONReply(text) {
+  const start = text.indexOf("{"), end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) throw { code: "invalid_json" };
+  try { return JSON.parse(text.slice(start, end + 1)); } catch (e) { throw { code: "invalid_json" }; }
 }
 
 function toAppError(e) {
