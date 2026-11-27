@@ -13,7 +13,7 @@
     "deploy:web": "sh scripts/deploy-pages.sh",
     "mac:install": "sh scripts/build-mac.sh",
     "test": "vitest run",
-    "test:e2e": "vite build && node tests/e2e/session.mjs"
+    "test:e2e": "vite build && node tests/e2e/session.mjs && node tests/e2e/features.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.14.0",

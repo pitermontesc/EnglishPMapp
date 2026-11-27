@@ -65,6 +65,10 @@ function toAppError(e) {
   if (e instanceof Anthropic.NotFoundError) return { code: "model_not_found" };
   if (e instanceof Anthropic.RateLimitError) return { code: "rate_limited" };
   if (e instanceof Anthropic.APIConnectionError) return { code: "offline" };
-  if (e instanceof Anthropic.APIError) return { code: "api_error_" + (e.status || "unknown") };
+  if (e instanceof Anthropic.APIError) {
+    if (e.status === 529) return { code: "overloaded" };
+    if (e.status >= 500) return { code: "server_error" };
+    return { code: "api_error_" + (e.status || "unknown") };
+  }
   return { code: "error" };
 }

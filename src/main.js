@@ -63,6 +63,8 @@ function aiError(e, what) {
     no_access: "This API key cannot use the chosen model. Pick another model in Settings.",
     model_not_found: "The chosen model is not available for this key. Pick another model in Settings.",
     rate_limited: "Too many requests right now. Wait a minute and try again.",
+    overloaded: "Claude is busy right now. Try again in a minute.",
+    server_error: "Claude had a problem on its side. Try again in a moment.",
     offline: "No connection to Claude. Check your internet connection.",
     refusal: "Claude declined this request. Try again.",
     invalid_json: "Claude's answer could not be read. Try again.",
