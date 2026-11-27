@@ -162,6 +162,13 @@
       <p class="hint">On: words said softly, like the last one in a sentence, are recognized more easily. Off: stricter, so small pronunciation slips show up in red.</p>
     </div>
     <div class="card">
+      <h3>Microphone log</h3>
+      <p class="hint">If the microphone cuts you off, read the sentence once more, then come back here and press Copy log. It records only what the recognizer did during your last readings and stays on this device.</p>
+      <div class="row"><button id="log-copy">Copy log</button></div>
+      <p class="small" id="log-msg" role="status"></p>
+      <textarea id="log-text" class="log" readonly rows="8" hidden aria-label="Microphone log"></textarea>
+    </div>
+    <div class="card">
       <h3>Your data</h3>
       <p class="hint">Lessons and progress are saved on this device. To continue on another device, export a backup here and import it there.</p>
       <div class="row"><button id="exp-btn">Export backup</button><button id="imp-btn">Import backup</button><input type="file" id="imp-file" accept="application/json,.json" hidden></div>

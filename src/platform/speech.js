@@ -5,13 +5,18 @@
 import { Capacitor, CapacitorHttp } from "@capacitor/core";
 import { SpeechRecognition } from "@capgo/capacitor-speech-recognition";
 
-// Diagnostics for a VITE_DIAG=1 build only (compiled out otherwise): timestamped recognizer
-// events on the console and to a receiver on 127.0.0.1:47613. On the Mac app the receiver also
-// needs NSAppTransportSecurity > NSAllowsLocalNetworking in Info.plist for that test build.
+// Microphone log: timestamped recognizer events of the last takes, kept in memory only, so the
+// learner can copy it from Settings when something goes wrong. A VITE_DIAG=1 test build also
+// sends each line to a receiver on 127.0.0.1:47613 (that build needs
+// NSAppTransportSecurity > NSAllowsLocalNetworking in Info.plist).
 const T0 = Date.now();
+const LOG = [];
+export function micLog() { return LOG.join("\n"); }
 export function diag(...a) {
-  if (import.meta.env.VITE_DIAG !== "1") return;
   const line = "[+" + (Date.now() - T0) + "ms] " + a.map((x) => typeof x === "string" ? x : JSON.stringify(x)).join(" ");
+  LOG.push(line.length > 400 ? line.slice(0, 400) + "…" : line);
+  if (LOG.length > 1500) LOG.splice(0, LOG.length - 1500);
+  if (import.meta.env.VITE_DIAG !== "1") return;
   console.log(line);
   // local receiver during tests; native HTTP because the web view blocks capacitor:// -> http://
   CapacitorHttp.post({ url: "http://127.0.0.1:47613/", headers: { "Content-Type": "text/plain" }, data: line }).catch(() => {});
@@ -49,7 +54,7 @@ async function nativeDictation() {
     h.state({ state: "idle", reason });
   }
   await SpeechRecognition.addListener("partialResults", (e) => {
-    diag("native partial", { active, matches: e.matches && e.matches[0], acc: e.accumulated, accText: e.accumulatedText, forced: e.forced });
+    diag("native partial", { active, matches: e.matches && e.matches[0], acc: e.accumulated, accText: e.accumulatedText });
     if (!active) return;
     const current = (e.matches && e.matches[0]) || "";
     text = e.accumulatedText || [e.accumulated, current].filter(Boolean).join(" ");

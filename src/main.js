@@ -14,7 +14,7 @@ import "./styles.css";
 
 import { Capacitor } from "@capacitor/core";
 import { openStore, store, getSetting, setSettings } from "./platform/storage.js";
-import { createDictation, diag } from "./platform/speech.js";
+import { createDictation, diag, micLog } from "./platform/speech.js";
 import { speak, stop as stopSpeech, ttsAvailable } from "./platform/tts.js";
 import { createAI, MODELS, DEFAULT_MODEL } from "./platform/ai.js";
 import { saveTextFile } from "./platform/files.js";
@@ -156,16 +156,16 @@ function startRec(o) {
   if (o.live) { o.live.textContent = "Listening…"; o.live.classList.add("listening"); }
   if (o.target) {
     rec.timers.quiet = setTimeout(() => stopWhenQuiet("quiet"), 10000 * pauseFactor()); // nothing said at all
-    rec.timers.max = setTimeout(() => stopRec("auto"), (10000 + o.target.length * 1200) * pauseFactor());
+    rec.timers.max = setTimeout(() => stopRec("auto", "max time for this sentence"), (10000 + o.target.length * 1200) * pauseFactor());
   }
-  diag("app start take", o.key, o.target ? o.target.join(" ") : "");
+  diag("app start take", o.key, o.target ? o.target.join(" ") : "", { pause: getSetting("pause", "long"), expect: getSetting("expectWords", true), handsFree: prefs.handsFree, listenFirst: prefs.listenFirst });
   dict.start({ language: "en", phrases: o.phrases }).catch((e) => finishRec(e && e.code));
   return true;
 }
-function stopRec(how) {
+function stopRec(how, why) {
   if (!rec) return;
   rec.how = how; rec.stopping = true;
-  diag("app stop take", how, "heard so far:", heardSoFar());
+  diag("app stop take", how, why || "", "heard so far:", heardSoFar());
   Object.values(rec.timers).forEach(clearTimeout);
   dict.stop().catch(() => {});
 }
@@ -226,7 +226,7 @@ function stopWhenQuiet(why) {
     rec.timers[why] = setTimeout(() => stopWhenQuiet(why), hold - since + 100);
     return;
   }
-  stopRec("auto");
+  stopRec("auto", why + " timer, voice quiet for " + since + " ms" + (rec.levels ? "" : " (no mic level)"));
 }
 function finishRec(reason) {
   if (!rec) return;
@@ -237,10 +237,17 @@ function finishRec(reason) {
     const r = rec;
     r.buf = (r.buf + " " + r.interim).trim(); r.interim = ""; r.restarts++;
     diag("app RESTART recognizer (engine closed by itself)", { reason, buf: r.buf });
-    dict.start({ language: "en", phrases: r.phrases }).catch((e) => { if (rec === r) { r.stopping = true; finishRec(e && e.code); } });
+    const reopen = (tries) => dict.start({ language: "en", phrases: r.phrases }).catch((e) => {
+      diag("app restart failed", { code: e && e.code, tries });
+      if (rec !== r) return;
+      if (tries < 3 && !r.stopping) { setTimeout(() => { if (rec === r && !r.stopping) reopen(tries + 1); }, 400); return; }
+      r.stopping = true; finishRec(e && e.code);
+    });
+    reopen(1);
     return;
   }
   const r = rec; rec = null;
+  diag("app take closed", { reason: reason || "", how: r.how, stopping: r.stopping, restarts: r.restarts });
   Object.values(r.timers).forEach(clearTimeout);
   if (r.onRecState) r.onRecState(false);
   else { r.btn.innerHTML = r.label; r.btn.classList.remove("rec"); }
@@ -765,6 +772,14 @@ function renderSettings() {
 function wireSettings() {
   $("set-pause").onchange = () => setSettings({ pause: $("set-pause").value });
   $("set-expect").onchange = () => setSettings({ expectWords: $("set-expect").checked });
+  $("log-copy").onclick = async () => {
+    const box = $("log-text"), msg = $("log-msg");
+    const text = micLog();
+    if (!text) { msg.textContent = "The log is empty. Read a sentence first."; box.hidden = true; return; }
+    box.value = text; box.hidden = false;
+    try { await navigator.clipboard.writeText(text); msg.textContent = "Copied. Paste it in your message (⌘V)."; }
+    catch (e) { box.focus(); box.select(); msg.textContent = "Selected below: press ⌘C to copy it."; }
+  };
   $("set-save").onclick = async () => {
     await setSettings({ apiKey: $("set-key").value.trim(), model: $("set-model").value, autoLesson: $("set-auto").checked });
     refreshAI(); renderSettings(); updateAIButtons();
