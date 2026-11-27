@@ -129,6 +129,7 @@ const ICONS = {
   pause: '<path d="M8 5v14M16 5v14"/>',
   prev: '<path d="m15 6-6 6 6 6"/>',
   next: '<path d="m9 6 6 6-6 6"/>',
+  dots: '<circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/>',
 };
 function icon(name) { return '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + "</svg>"; }
 function setButton(btn, name, label) { btn.innerHTML = icon(name) + (label ? "<span>" + label + "</span>" : ""); }
@@ -142,7 +143,8 @@ function micHelp() {
   if (PLATFORM === "web") return "Reading aloud needs speech recognition: open the app in Google Chrome, or use the Mac app.";
   return "Speech recognition is not available on this device. Check that dictation is enabled in the system settings.";
 }
-// One recording at a time. o = { key, btn, live, done(text, how), target?, onLive?(text), onEmpty?(), onRecState?(on) }.
+// One recording at a time. o = { key, btn, live, done(text, how), target?, onLive?(text), onEmpty?(),
+// onRecState?(state) with state "rec" | "closing" | "idle" }.
 // With a target sentence the take stops by itself: right after its last word is heard,
 // or after a short silence once the learner has started speaking.
 function startRec(o) {
@@ -151,9 +153,9 @@ function startRec(o) {
   stopAudio();
   rec = Object.assign({ buf: "", interim: "", how: "auto", spoke: false, stopping: false, restarts: 0, okSet: new Set(), bestOk: -1, bestText: "", timers: {}, floor: null, lastVoice: 0, levels: false, voice: false }, o);
   rec.deadline = Date.now() + (10000 + (o.target ? o.target.length : 0) * 1200) * pauseFactor();
-  if (o.onRecState) o.onRecState(true);
+  if (o.onRecState) o.onRecState("rec");
   else { rec.label = o.btn.innerHTML; o.btn.textContent = "Stop"; o.btn.classList.add("rec"); }
-  if (o.live) { o.live.textContent = "Listening…"; o.live.classList.add("listening"); }
+  if (o.live) { o.live.textContent = "Listening…"; o.live.classList.remove("idle"); o.live.classList.add("listening"); }
   if (o.target) {
     rec.timers.quiet = setTimeout(() => stopWhenQuiet("quiet"), 10000 * pauseFactor()); // nothing said at all
     rec.timers.max = setTimeout(() => stopRec("auto", "max time for this sentence"), (10000 + o.target.length * 1200) * pauseFactor());
@@ -166,6 +168,11 @@ function stopRec(how, why) {
   if (!rec) return;
   rec.how = how; rec.stopping = true;
   diag("app stop take", how, why || "", "heard so far:", heardSoFar());
+  // While Apple sends its final text (up to a few seconds) the button says so instead of "Stop".
+  if (how !== "cancel") {
+    if (rec.onRecState) rec.onRecState("closing");
+    else { rec.btn.textContent = "Checking…"; rec.btn.classList.add("closing"); }
+  }
   Object.values(rec.timers).forEach(clearTimeout);
   dict.stop().catch(() => {});
 }
@@ -216,6 +223,10 @@ function onLevel(level) {
   else rec.floor += (level - rec.floor) * 0.002; // the room's noise, rising slowly if it gets louder
   const voice = level > rec.floor + VOICE_ABOVE_NOISE;
   if (voice) rec.lastVoice = Date.now();
+  // The button's ring follows the voice, so the learner can see the microphone hearing them.
+  rec.btn.classList.add("metered");
+  rec.btn.style.setProperty("--lvl", Math.max(0, Math.min(1, (level - rec.floor) / 0.35)).toFixed(2));
+  if (voice && rec.live && !heardSoFar() && !rec.hearing) { rec.hearing = true; rec.live.textContent = "Hearing you…"; }
   if (voice !== rec.voice) { rec.voice = voice; diag("app voice", voice ? "on" : "off", { level: +level.toFixed(2), floor: +rec.floor.toFixed(2) }); }
 }
 function stopWhenQuiet(why) {
@@ -249,8 +260,9 @@ function finishRec(reason) {
   const r = rec; rec = null;
   diag("app take closed", { reason: reason || "", how: r.how, stopping: r.stopping, restarts: r.restarts });
   Object.values(r.timers).forEach(clearTimeout);
-  if (r.onRecState) r.onRecState(false);
-  else { r.btn.innerHTML = r.label; r.btn.classList.remove("rec"); }
+  r.btn.style.removeProperty("--lvl"); r.btn.classList.remove("metered");
+  if (r.onRecState) r.onRecState("idle");
+  else { r.btn.innerHTML = r.label; r.btn.classList.remove("rec", "closing"); }
   if (r.live) { r.live.textContent = ""; r.live.classList.remove("listening"); }
   if (r.how === "cancel") return;
   const text = (r.buf + " " + r.interim).trim();
@@ -319,8 +331,9 @@ function renderLesson() {
     });
     const score = el("span", "chip score"); score.hidden = true; p.appendChild(score);
     const live = el("div", "sent-live"); live.setAttribute("aria-live", "polite");
-    li.append(p, live);
-    li._p = p; li._score = score; li._live = live;
+    const actions = el("div", "sent-actions"); actions.hidden = true;
+    li.append(p, live, actions);
+    li._p = p; li._score = score; li._live = live; li._actions = actions;
     box.appendChild(li);
     const prev = session.reads[idx];
     if (prev) paintSentence(li, text, prev.heard, prev.ok);
@@ -344,6 +357,7 @@ function select(idx, opts = {}) {
   $("r-prev").disabled = active === 0;
   $("r-next").disabled = active === n - 1;
   const li = items()[active];
+  if (li && !session.reads[active] && !(rec && rec.key === "s" + active) && !li._live.classList.contains("listening")) setIdleHint(li);
   if (opts.scroll !== false && li) ensureVisible(li);
 }
 // Keep the active sentence in the free space between the sticky top bar and the reading bar.
@@ -360,9 +374,17 @@ function setReadButton(state) {
   const b = $("r-read");
   b.classList.toggle("rec", state === "rec");
   b.classList.toggle("wait", state === "model");
+  b.classList.toggle("closing", state === "closing");
   if (state === "rec") setButton(b, "stop", "Stop");
   else if (state === "model") setButton(b, "speaker", "Listen…");
+  else if (state === "closing") setButton(b, "dots", "Checking…");
   else setButton(b, "mic", "Read");
+}
+// Under the active sentence, before it is read: what to do next.
+const HAS_KEYS = matchMedia("(hover: hover) and (pointer: fine)").matches;
+function setIdleHint(li) {
+  li._live.textContent = HAS_KEYS ? "Press Read (or Space) and read this sentence aloud." : "Press Read and read this sentence aloud.";
+  li._live.classList.add("idle"); li._live.classList.remove("listening");
 }
 function setPlayButton(on) { setButton($("play-story"), on ? "pause" : "play", on ? "Stop" : "Play story"); }
 function flowAlive(id) { return flow && flow.id === id; }
@@ -387,12 +409,13 @@ async function readFrom(idx, id) {
     if (!flowAlive(id)) return;
   }
   const li = items()[active], target = words(text), at = active;
+  li._actions.hidden = true;
   startRec({
     key: "s" + at, btn: $("r-read"), live: li._live, target, phrases: expectedPhrases(text),
-    onRecState: (on) => setReadButton(on ? "rec" : "idle"),
+    onRecState: (state) => setReadButton(state),
     onLive: (heard) => liveSentence(li, target, heard),
     done: (heard, how, okIdx) => { gradeSentence(at, heard, okIdx); afterSentence(at, id, how); },
-    onEmpty: () => { clearLive(li); if (flowAlive(id)) endFlow(); },
+    onEmpty: () => { clearLive(li); if (session.reads[at]) paintSentence(li, text, session.reads[at].heard, session.reads[at].ok); if (flowAlive(id)) endFlow(); },
   });
 }
 function afterSentence(idx, id, how) {
@@ -455,10 +478,16 @@ function paintSentence(li, text, heardText, okIdx) {
     parts.forEach((w) => { const at = k++, r = res[at]; if ((r && r.ok) || seen.has(at)) hit++; else { ok = false; missed.push({ word: w, heard: r ? r.heard : "" }); } });
     sp.classList.remove("ok", "miss"); sp.classList.add(ok ? "ok" : "miss");
   });
-  const pct = target.length ? Math.round(100 * hit / target.length) : 0;
+  const pct = target.length ? Math.floor(100 * hit / target.length) : 0;
   li._score.hidden = false; li._score.textContent = pct + "%";
-  li._score.className = "chip score " + (pct >= 90 ? "good" : pct >= 70 ? "mark" : "miss");
-  li._live.textContent = ""; li._live.append("Heard: ", el("b", "", heardText));
+  li._score.className = "chip score " + grade(pct);
+  li._live.textContent = ""; li._live.classList.remove("idle", "listening"); li._live.append("Heard: ", el("b", "", heardText));
+  const acts = li._actions; acts.textContent = "";
+  const again = el("button", "pill quiet"); setButton(again, "mic", "Read again");
+  again.onclick = (e) => { e.stopPropagation(); if (rec) return; const i = +li.dataset.idx; endFlow(); readFrom(i); };
+  acts.appendChild(again);
+  if (missed.length) acts.appendChild(el("span", "hint", "Tap a red word to hear it."));
+  acts.hidden = false;
   return { hit, total: target.length, missed };
 }
 function gradeSentence(idx, heardText, okIdx) {
@@ -472,8 +501,11 @@ function gradeSentence(idx, heardText, okIdx) {
     t.misses++; t.last = TODAY; t.heardAs = m.heard || ""; touched.push(m.word);
     if (session.missed.indexOf(m.word) < 0) session.missed.push(m.word);
   });
+  const wasDone = !$("story-done").hidden;
   saveSession(); touched.forEach(saveWord);
   renderFix(); updateAcc(); renderProgress();
+  // Finishing the story: bring the summary into view above the reading bar.
+  if (!wasDone && !$("story-done").hidden) setTimeout(() => ensureVisible($("story-done")), 350);
 }
 function wireReader() {
   prefs.handsFree = getSetting("handsFree", true);
@@ -509,12 +541,54 @@ function wireReader() {
     else if (e.key === "l" || e.key === "L") { e.preventDefault(); $("r-listen").click(); }
   });
 }
-function accuracy(s) { let h = 0, t = 0; Object.keys(s.reads || {}).forEach((k) => { h += s.reads[k].hit; t += s.reads[k].total; }); return t ? Math.round(100 * h / t) : null; }
+function accuracy(s) { let h = 0, t = 0; Object.keys(s.reads || {}).forEach((k) => { h += s.reads[k].hit; t += s.reads[k].total; }); return t ? Math.floor(100 * h / t) : null; } // floor: 100% only when every word was understood
 function updateAcc() {
   const a = accuracy(session), n = Object.keys(session.reads).length, c = $("acc-chip");
+  renderDone(); renderPlan();
   if (a == null) { c.textContent = "Not read yet"; c.className = "chip"; return; }
   c.textContent = a + "% understood · " + n + "/" + (lesson.sentences || []).length + " sentences";
   c.className = "chip " + (a >= 90 ? "good" : a >= 70 ? "mark" : "miss");
+}
+function grade(pct) { return pct >= 90 ? "good" : pct >= 70 ? "mark" : "miss"; }
+// Shown under the story once every sentence has a result.
+function renderDone() {
+  const n = count(), read = Object.keys(session.reads).length, box = $("story-done");
+  if (!n || read < n) { box.hidden = true; return; }
+  const acc = accuracy(session), missed = session.missed.filter((w) => troub[w]).length;
+  const sc = $("done-score"); sc.textContent = acc + "%"; sc.className = "done-score " + grade(acc);
+  $("done-title").textContent = acc >= 90 ? "Great reading" : acc >= 70 ? "Good work" : "Story complete";
+  $("done-text").textContent = missed
+    ? (missed === 1 ? "1 word was not understood. Practice it" : missed + " words were not understood. Practice them") + ", then read the story again."
+    : "Every word was understood. Try the exercises or speak freely next.";
+  $("done-fix").hidden = !missed;
+  box.hidden = false;
+}
+// Today's plan: the four parts of the daily practice, each with its state; a tap jumps there.
+function renderPlan() {
+  if (!lesson) return;
+  const n = count(), read = Object.keys(session.reads).length, storyDone = n > 0 && read >= n;
+  const missed = session.missed.filter((w) => troub[w]);
+  const toFix = missed.filter((w) => !(troub[w].hits > 0)).length;
+  const ds = lesson.drills || [], answered = ds.filter((d, i) => session.drills[i] != null).length;
+  const steps = [
+    { label: "Read the story", target: "story-card", done: storyDone, detail: read + "/" + n },
+    { label: "Fix words", target: "fix-card", done: storyDone && toFix === 0, detail: missed.length ? (toFix ? toFix + " left" : "All said well") : (storyDone ? "None to fix" : "After reading") },
+    { label: "Exercises", target: "drill-card", done: ds.length > 0 && answered === ds.length, detail: answered + "/" + ds.length },
+    { label: "Speak freely", target: "speak-card", done: !!session.speak, detail: session.speak ? "Done" : "About a minute" },
+  ];
+  const box = $("plan"); box.textContent = "";
+  steps.forEach((st, i) => {
+    const a = el("a", "step" + (st.done ? " done" : "")); a.href = "#today";
+    a.append(el("span", "step-n", st.done ? "✓" : String(i + 1)), el("span", "step-l", st.label), el("span", "step-d", st.detail));
+    a.setAttribute("aria-label", st.label + ": " + (st.done ? "done" : st.detail));
+    a.onclick = (e) => { e.preventDefault(); goToCard(st.target); };
+    box.appendChild(a);
+  });
+}
+function goToCard(id) {
+  const c = $(id);
+  c.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  c.focus({ preventScroll: true });
 }
 function saveSession() {
   if (!lesson) return;
@@ -560,6 +634,7 @@ function renderFix() {
   $("coach-btn").disabled = !sample || need.length === 0;
   $("coach-btn").textContent = need.length ? "Coach me on these words" : (ws.length ? "Coaching ready" : "Coach me on these words");
   $("coach-btn").title = sample ? "" : "Add your API key in Settings";
+  renderPlan();
 }
 function coach() {
   const need = session.missed.filter((w) => troub[w] && !troub[w].coach).slice(0, 15);
@@ -656,6 +731,7 @@ function updateDrillChip() {
   ds.forEach((d, i) => { if (session.drills[i] != null) { done++; if (session.drills[i] === d.answer) ok++; } });
   $("drill-chip").textContent = done ? ok + "/" + ds.length + " correct" : ds.length + " questions";
   $("drill-chip").className = "chip" + (done === ds.length && ds.length ? (ok === ds.length ? " good" : " mark") : "");
+  renderPlan();
 }
 
 // ---------- speak freely ----------
@@ -706,7 +782,8 @@ function streak() {
 function renderProgress() {
   const done = allSessions.filter((s) => s.accuracy != null).sort((a, b) => (a.date < b.date ? 1 : -1));
   const st = streak();
-  $("streak").textContent = "Streak " + st + (st === 1 ? " day" : " days"); $("st-streak").textContent = st; $("st-days").textContent = done.length;
+  $("streak").textContent = st ? st + "-day streak" : "No streak yet";
+  $("streak").className = "chip" + (st ? " good" : ""); $("st-streak").textContent = st; $("st-days").textContent = done.length;
   $("st-acc").textContent = done.length ? Math.round(done.reduce((a, s) => a + s.accuracy, 0) / done.length) + "%" : "–";
   $("st-vocab").textContent = Object.keys(vocabDocs).length;
   const bars = $("bars"); bars.textContent = ""; $("bars-empty").hidden = done.length > 0;
@@ -760,6 +837,7 @@ function renderSettings() {
   $("set-auto").checked = getSetting("autoLesson", true);
   $("set-pause").value = getSetting("pause", "long");
   $("set-expect").checked = getSetting("expectWords", true);
+  const chip = $("ai-chip"); chip.textContent = sample ? "Connected" : "No API key"; chip.className = "chip " + (sample ? "good" : "mark");
   const info = $("dev-info"); info.textContent = "";
   const platformName = { web: "Web browser", ios: "Mac app" }[PLATFORM] || PLATFORM;
   [
@@ -815,6 +893,7 @@ function route() {
   document.querySelectorAll("nav.tabs a").forEach((a) => { if (a.dataset.tab === h) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   if (h !== "today") { if (rec) stopRec("cancel"); endFlow(); }
   if (h === "settings") renderSettings();
+  if (statusKey === "nokey") $("status").hidden = h === "settings";
 }
 
 // ---------- load ----------
@@ -844,6 +923,8 @@ async function init() {
   $("today-date").textContent = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   $("coach-btn").onclick = coach;
   $("make-lesson").onclick = makeLesson;
+  $("done-fix").onclick = () => goToCard("fix-card");
+  $("done-again").onclick = () => { endFlow(); readFrom(0); };
   await openStore();
   wireStatus(); wireReader(); wireSpeak(); wireSettings();
   refreshAI();

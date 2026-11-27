@@ -149,7 +149,7 @@ a { color: var(--accent); }
 .tok.vocab { border-bottom: 2px solid var(--mark); }
 .tok.live-ok { color: var(--good); }
 .tok.next { box-shadow: inset 0 -2px 0 var(--accent); }
-.tok.ok { background: var(--good-soft); }
+.tok.ok { color: color-mix(in srgb, var(--good) 72%, var(--ink)); }
 .tok.miss { background: var(--miss-soft); color: var(--miss); text-decoration: underline wavy; text-underline-offset: 4px; }
 .score { margin-left: 6px; vertical-align: 3px; font-family: var(--font-ui); font-size: 12px; padding: 0 8px; }
 .sent-live { margin-top: 6px; min-height: 1.4em; font-family: var(--font-mono); font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
@@ -211,3 +211,69 @@ button.note-x { min-height: 0; padding: 0 4px; border: 0; background: transparen
 }
 .vcard > button, .vcard .row > button { align-self: flex-start; }
 .drill button.opt { min-height: 40px; }
+
+/* ================= UX pass: guidance, feedback, completion ================= */
+
+/* Today's plan: four steps of the daily practice. */
+.plan { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.step { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center;
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  color: var(--ink); text-decoration: none; min-width: 0; transition: border-color .15s ease; }
+.step:hover { border-color: var(--accent); }
+.step-n { grid-row: span 2; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; background: var(--accent-soft); color: var(--accent); font-variant-numeric: tabular-nums; }
+.step-l { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.step-d { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.step.done .step-n { background: var(--good); color: var(--surface); }
+.step.done .step-d { color: var(--good); }
+@media (max-width: 640px) { .plan { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Color key under the story title */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { font-family: var(--font-story); font-style: normal; font-size: 15px; color: var(--ink); border-radius: 4px; padding: 0 2px; }
+.sw.ok { color: color-mix(in srgb, var(--good) 72%, var(--ink)); }
+.sw.miss { background: var(--miss-soft); color: var(--miss); text-decoration: underline wavy; text-underline-offset: 3px; }
+.sw.vocab { border-bottom: 2px solid var(--mark); border-radius: 0; }
+
+/* Under the active sentence: what to do, what was heard, what to do next */
+.sent-live.idle { font-family: var(--font-ui); color: var(--muted); }
+.sent-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 8px; }
+.sent:not(.active) .sent-actions { display: none; }
+button.pill.quiet { min-height: 32px; height: 32px; padding: 0 12px; font-size: 13px; gap: 6px; }
+button.pill.quiet svg.i { width: 15px; height: 15px; }
+
+/* Recording feedback: the ring follows the voice; "Checking…" while Apple sends its final text */
+button.mic.rec.metered, button.rec.metered { animation: none;
+  box-shadow: 0 0 0 calc(2px + var(--lvl, 0) * 14px) color-mix(in srgb, var(--miss) 30%, transparent);
+  transition: box-shadow .09s linear; }
+button.mic.closing, button.closing { background: var(--surface); border-color: var(--line); color: var(--muted); cursor: progress; animation: none; }
+@media (prefers-reduced-motion: no-preference) {
+  button.mic.closing svg circle { animation: blink 1s infinite both; }
+  button.mic.closing svg circle:nth-child(2) { animation-delay: .15s; }
+  button.mic.closing svg circle:nth-child(3) { animation-delay: .3s; }
+}
+@keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+button.mic svg circle { fill: currentColor; }
+
+/* Story complete */
+.done { display: flex; gap: 16px; align-items: center; padding: 16px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); }
+.done-score { flex: none; width: 72px; height: 72px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-story); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; background: var(--accent-soft); color: var(--accent); }
+.done-score.good { background: var(--good-soft); color: var(--good); }
+.done-score.mark { background: var(--mark-soft); color: var(--mark); }
+.done-score.miss { background: var(--miss-soft); color: var(--miss); }
+.done-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.done-title { font-family: var(--font-story); font-size: 20px; font-weight: 600; }
+@media (max-width: 420px) { .done { flex-direction: column; align-items: flex-start; } }
+
+/* Jumping to a section from the plan lands below the sticky top bar */
+section.view > .card { scroll-margin-top: 130px; }
+section.view > .card:focus { outline: none; }
+
+/* Settings: troubleshooting tucked away */
+details.trouble { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+details.trouble summary { cursor: pointer; font-size: 14px; font-weight: 500; color: var(--muted); }
+details.trouble[open] summary { margin-bottom: 10px; }
+details.trouble > :not(summary) + :not(summary) { margin-top: 10px; }
+.story-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
