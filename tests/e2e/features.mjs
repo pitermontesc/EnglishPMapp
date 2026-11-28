@@ -27,8 +27,9 @@ const LESSON = {
   focus: { title: "Past tense -ed", tip: "Pronuncia la terminación -ed.", items: [{ text: "celebrated", note: "/ˈsɛləbreɪtɪd/ final -id" }] },
   drills: [{ prompt: "By Friday the fix was genuinely ____.", options: ["robust", "fragile", "silent", "late"], answer: "robust", why: "Robust means strong and reliable." }],
   speak: "Tell me about a release at work that went better than you expected.",
+  sentencesEs: ["Nuestro lanzamiento salió el lunes sin una sola alerta.", "El equipo lo celebró en silencio porque nadie confiaba todavía en la calma.", "Para el viernes, los paneles demostraron que el arreglo era realmente robusto."],
 };
-const COACH = { celebrated: { ipa: "/ˈsɛləbreɪtɪd/", say: "SE-le-brei-tid", tip: "Pronuncia la -ed como una sílaba extra: -id.", pair: "celebrate / celebrated", examples: ["We celebrated the launch.", "They celebrated quietly.", "She celebrated her promotion."] } };
+const COACH = { celebrated: { ipa: "/ˈsɛləbreɪtɪd/", say: "SE-le-brei-tid", tip: "Pronuncia la -ed como una sílaba extra: -id.", pair: "celebrate / celebrated", examples: ["We celebrated the launch.", "They celebrated quietly.", "She celebrated her promotion."], examplesEs: ["Celebramos el lanzamiento.", "Lo celebraron en silencio.", "Ella celebró su ascenso."] } };
 const FEEDBACK = ["You answered clearly.\n", "Corrections:\n", "I think the story is about -> I think the story is about (bien)\n", "Repeat: The story is about patience."];
 const cfg = { lesson: LESSON, coach: COACH, feedback: FEEDBACK };
 
@@ -232,8 +233,26 @@ const files = mkdtempSync(join(tmpdir(), "de-e2e-files-"));
     await page.$eval("#focus-items .vcard button", (b) => b.click()); await pause(150);
     check("a focus item is spoken slowly", (await spoken()).some((u) => u.text === STARTER.focus.items[0].text && u.rate === 0.8));
 
+    section("B15b. Explanations and examples in Spanish");
+    await page.goto(base + "#today"); await page.waitForSelector(".sent.active");
+    await pick(0);
+    check("the Español switch is on by default", await visible("#opt-es-wrap") && await page.$eval("#opt-es", (c) => c.checked));
+    check("the sentence being read shows its Spanish translation", (await text(".sent.active .sent-es")) === STARTER.sentencesEs[0] && await visible(".sent.active .sent-es"));
+    check("only the active sentence shows it", (await page.$$eval(".sent-es", (els) => els.filter((e) => e.offsetParent !== null).length)) === 1);
+    check("translations are marked as Spanish", await page.$eval(".sent.active .sent-es", (e) => e.lang === "es"));
+    await page.click("#opt-es");
+    check("the switch hides it", !(await visible(".sent.active .sent-es")));
+    await page.reload({ waitUntil: "networkidle0" }); await page.waitForSelector(".sent.active");
+    check("and is remembered", !(await page.$eval("#opt-es", (c) => c.checked)) && !(await visible(".sent.active .sent-es")));
+    await page.click("#opt-es");
+    const card0 = await text("#vocab .vcard");
+    check("vocabulary cards explain the word in Spanish", card0.includes(v0.noteEs));
+    check("and translate the example", card0.includes(v0.exampleEs));
+    check("Speak freely gives help in Spanish with useful phrases", (await text("#speak-es")) === STARTER.speakHelpEs);
+
     section("B16. Exercises, all correct");
     for (let i = 0; i < STARTER.drills.length; i++) await clickText("#drills .drill:nth-child(" + (i + 1) + ") button", STARTER.drills[i].answer);
+    check("each answer is explained in Spanish", (await page.$$eval("#drills .drill .es", (els) => els.map((e) => e.textContent))).join("|") === STARTER.drills.map((d) => d.whyEs).join("|"));
     check("the chip shows a perfect score", (await text("#drill-chip")) === STARTER.drills.length + "/" + STARTER.drills.length + " correct" && await page.$eval("#drill-chip", (c) => c.classList.contains("good")));
     await page.reload({ waitUntil: "networkidle0" }); await page.waitForSelector(".sent");
     check("answers stay locked after reopening", (await page.$$("#drills button.right")).length === STARTER.drills.length && (await page.$$("#drills button:not([disabled])")).length === 0);
@@ -314,6 +333,7 @@ const files = mkdtempSync(join(tmpdir(), "de-e2e-files-"));
     check("then it works: today's story replaces the starter", /Today's story/.test(await text("#lesson-kicker")) && (await page.$$(".sent")).length === 3 && !(await visible("#make-lesson")));
     const made = (await claude()).filter((c) => c.prompt.includes("Create today's English lesson")).pop();
     check("the request uses the chosen model, with fallbacks", made.model === "claude-sonnet-5-5" && /server-side-fallback-2026-07-01/.test(made.beta) && made.fallbacks === "default");
+    check("the request asks for translations and explanations in Spanish", ["sentencesEs", "noteEs", "exampleEs", "whyEs", "speakHelpEs"].every((f) => made.prompt.includes(f)));
     check("the request asks to reuse the learner's difficult words", /Reuse some of the learner's difficult words if natural: (?!none)/.test(made.prompt));
 
     section("C3. Coaching with no connection, then with Haiku");
@@ -339,6 +359,9 @@ const files = mkdtempSync(join(tmpdir(), "de-e2e-files-"));
     check("the contrast pair is playable", (await spoken()).some((u) => u.text === "celebrate"));
     await page.evaluate(() => document.querySelector("#fix-list li.ex").click()); await pause(150);
     check("the example sentences are playable", (await spoken()).some((u) => u.text === COACH.celebrated.examples[0]));
+    const fixText = await text("#fix-list");
+    check("coaching examples come with their Spanish translation", COACH.celebrated.examplesEs.every((t) => fixText.includes(t)));
+    check("Claude's story brings its Spanish translation", (await text(".sent.active .sent-es")).length > 0 && LESSON.sentencesEs.includes(await text(".sent.active .sent-es")));
 
     section("C4. Feedback that Claude declines, then a retry");
     await say("I think the story is about patience"); await page.click("#speak-rec"); await pause(800); await page.click("#speak-rec");
@@ -427,6 +450,7 @@ const files = mkdtempSync(join(tmpdir(), "de-e2e-files-"));
     check("all records are imported", true);
     await page.goto(base + "#today"); await page.waitForSelector(".sent");
     check("the latest story is shown with its date", (await text("#lesson-title")) === YESTERDAY_LESSON.title && (await text("#lesson-kicker")).includes("Latest story, " + Y1));
+    check("a story without Spanish hides the Español switch", !(await visible("#opt-es-wrap")) && (await page.$$eval(".sent-es", (els) => els.every((e) => e.hidden))));
     check("the streak counts yesterday and the day before", (await text("#streak")) === "2-day streak");
 
     section("D2. Spaced review");

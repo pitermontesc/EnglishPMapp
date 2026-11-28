@@ -82,6 +82,7 @@
           <label class="toggle" title="After each sentence, move to the next one and keep listening"><input type="checkbox" id="opt-handsfree"><span>Hands-free</span></label>
           <label class="toggle" title="Play each sentence before you read it"><input type="checkbox" id="opt-listenfirst"><span>Listen first</span></label>
           <label class="toggle" title="Play the model voice at three-quarter speed"><input type="checkbox" id="opt-slow"><span>Slow voice</span></label>
+          <label class="toggle" id="opt-es-wrap" title="Show the Spanish translation under the sentence you are reading"><input type="checkbox" id="opt-es"><span>Español</span></label>
         </div>
         <p class="reader-keys"><kbd>Space</kbd> read or stop · <kbd>←</kbd> <kbd>→</kbd> move · <kbd>L</kbd> listen</p>
       </div>
@@ -116,6 +117,7 @@
     <div class="card" id="speak-card" tabindex="-1">
       <h3>Speak freely</h3>
       <p class="sent-text" id="speak-prompt"></p>
+      <p class="small es" id="speak-es" lang="es" hidden></p>
       <p class="hint">Answer aloud for about a minute without reading. Then ask for feedback on grammar and word choice.</p>
       <div class="row">
         <button id="speak-rec">Start speaking</button>

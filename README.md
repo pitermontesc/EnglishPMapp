@@ -70,6 +70,10 @@ sin servidor propio. Cada uso se cobra a tu cuenta de la API.
 - Modelo por defecto: Claude Opus 5.5 (se puede cambiar a Sonnet 5.5 o Haiku 5.5 en Settings).
 - Con la opción activada, al abrir la app se crea la historia del día si todavía no existe.
 - Sin clave, la app funciona con la historia inicial incluida y con las historias ya guardadas.
+- Cada historia trae ayuda en español: la traducción de la frase que estás leyendo (interruptor **Español**
+  en la barra de lectura), una explicación de uso y la traducción del ejemplo de cada palabra, el porqué
+  de cada respuesta de los ejercicios, frases útiles para *Speak freely* y la traducción de los ejemplos del
+  coaching. Las historias guardadas antes de este cambio no traen traducciones y el interruptor no aparece.
 
 No publiques la versión web con una clave escrita en el código: cada persona pone la suya en Settings.
 

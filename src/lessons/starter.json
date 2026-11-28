@@ -18,31 +18,191 @@
     "Since then, I treat every mysterious bug as a puzzle rather than a nuisance, and I document my reasoning meticulously."
   ],
   "vocab": [
-    { "word": "idiosyncratic", "inStory": "idiosyncratic", "ipa": "/ˌɪdioʊsɪŋˈkrætɪk/", "say": "i-di-o-sin-KRA-tik", "pos": "adjective", "level": "C2", "meaning": "peculiar to one person or thing; unusual and individual", "es": "peculiar, idiosincrásico", "example": "Her idiosyncratic naming style made the old code hard to follow." },
-    { "word": "tenable", "inStory": "tenable", "ipa": "/ˈtɛnəbəl/", "say": "TE-ne-bel", "pos": "adjective", "level": "C2", "meaning": "able to be defended or maintained", "es": "sostenible, defendible", "example": "Shipping without regression tests is not a tenable strategy." },
-    { "word": "cryptic", "inStory": "cryptic", "ipa": "/ˈkrɪptɪk/", "say": "KRIP-tik", "pos": "adjective", "level": "C2", "meaning": "mysterious and hard to understand", "es": "críptico, enigmático", "example": "The error message was so cryptic that we had to read the source code." },
-    { "word": "meticulously", "inStory": "meticulously", "ipa": "/məˈtɪkjələsli/", "say": "me-TI-kiu-les-li", "pos": "adverb", "level": "C2", "meaning": "with great care and attention to every detail", "es": "meticulosamente", "example": "She meticulously checked every edge case before signing off." },
-    { "word": "methodically", "inStory": "methodically", "ipa": "/məˈθɑdɪkli/", "say": "me-THA-dik-li (TH como en think)", "pos": "adverb", "level": "C1", "meaning": "in an orderly, systematic way", "es": "metódicamente", "example": "He worked through the checklist methodically, one item at a time." },
-    { "word": "daunting", "inStory": "daunting", "ipa": "/ˈdɔntɪŋ/", "say": "DON-ting", "pos": "adjective", "level": "C1", "meaning": "seeming difficult and likely to discourage you", "es": "abrumador, intimidante", "example": "Migrating the whole test suite looked daunting at first." },
-    { "word": "nuisance", "inStory": "nuisance", "ipa": "/ˈnusəns/", "say": "NU-sens", "pos": "noun", "level": "C1", "meaning": "something annoying or causing trouble", "es": "molestia, fastidio", "example": "The flaky test had become a real nuisance for the whole team." }
+    {
+      "word": "idiosyncratic",
+      "inStory": "idiosyncratic",
+      "ipa": "/ˌɪdioʊsɪŋˈkrætɪk/",
+      "say": "i-di-o-sin-KRA-tik",
+      "pos": "adjective",
+      "level": "C2",
+      "meaning": "peculiar to one person or thing; unusual and individual",
+      "es": "peculiar, idiosincrásico",
+      "example": "Her idiosyncratic naming style made the old code hard to follow.",
+      "noteEs": "Se usa para hábitos o estilos muy propios de alguien, raros pero característicos. Suena más formal que «weird» y no es necesariamente negativo.",
+      "exampleEs": "Su peculiar forma de nombrar las cosas hacía difícil seguir el código viejo."
+    },
+    {
+      "word": "tenable",
+      "inStory": "tenable",
+      "ipa": "/ˈtɛnəbəl/",
+      "say": "TE-ne-bel",
+      "pos": "adjective",
+      "level": "C2",
+      "meaning": "able to be defended or maintained",
+      "es": "sostenible, defendible",
+      "example": "Shipping without regression tests is not a tenable strategy.",
+      "noteEs": "Algo que todavía se puede sostener o defender. Casi siempre aparece en negativo: «not a tenable option», «no longer tenable».",
+      "exampleEs": "Publicar sin pruebas de regresión no es una estrategia sostenible."
+    },
+    {
+      "word": "cryptic",
+      "inStory": "cryptic",
+      "ipa": "/ˈkrɪptɪk/",
+      "say": "KRIP-tik",
+      "pos": "adjective",
+      "level": "C2",
+      "meaning": "mysterious and hard to understand",
+      "es": "críptico, enigmático",
+      "example": "The error message was so cryptic that we had to read the source code.",
+      "noteEs": "Significa misterioso o difícil de entender; en el día a día no tiene que ver con criptografía. Muy común con «message», «comment» o «error».",
+      "exampleEs": "El mensaje de error era tan críptico que tuvimos que leer el código fuente."
+    },
+    {
+      "word": "meticulously",
+      "inStory": "meticulously",
+      "ipa": "/məˈtɪkjələsli/",
+      "say": "me-TI-kiu-les-li",
+      "pos": "adverb",
+      "level": "C2",
+      "meaning": "with great care and attention to every detail",
+      "es": "meticulosamente",
+      "example": "She meticulously checked every edge case before signing off.",
+      "noteEs": "Con muchísimo cuidado y atención al detalle. Suele ir después del verbo: «check it meticulously», «document it meticulously».",
+      "exampleEs": "Revisó con muchísimo cuidado cada caso límite antes de dar el visto bueno."
+    },
+    {
+      "word": "methodically",
+      "inStory": "methodically",
+      "ipa": "/məˈθɑdɪkli/",
+      "say": "me-THA-dik-li (TH como en think)",
+      "pos": "adverb",
+      "level": "C1",
+      "meaning": "in an orderly, systematic way",
+      "es": "metódicamente",
+      "example": "He worked through the checklist methodically, one item at a time.",
+      "noteEs": "Paso a paso, siguiendo un método. Muy útil en QA: «test methodically». Ojo con la TH sin voz /θ/: lengua entre los dientes.",
+      "exampleEs": "Repasó la lista de verificación de forma metódica, un punto a la vez."
+    },
+    {
+      "word": "daunting",
+      "inStory": "daunting",
+      "ipa": "/ˈdɔntɪŋ/",
+      "say": "DON-ting",
+      "pos": "adjective",
+      "level": "C1",
+      "meaning": "seeming difficult and likely to discourage you",
+      "es": "abrumador, intimidante",
+      "example": "Migrating the whole test suite looked daunting at first.",
+      "noteEs": "Una tarea que intimida o desanima antes de empezar. No significa «peligroso», sino «abrumador». Frases típicas: «a daunting task», «it feels daunting».",
+      "exampleEs": "Migrar toda la suite de pruebas parecía abrumador al principio."
+    },
+    {
+      "word": "nuisance",
+      "inStory": "nuisance",
+      "ipa": "/ˈnusəns/",
+      "say": "NU-sens",
+      "pos": "noun",
+      "level": "C1",
+      "meaning": "something annoying or causing trouble",
+      "es": "molestia, fastidio",
+      "example": "The flaky test had become a real nuisance for the whole team.",
+      "noteEs": "Algo molesto o fastidioso, pero no grave. Se pronuncia NU-sens: la «i» no suena.",
+      "exampleEs": "La prueba inestable se había vuelto una verdadera molestia para todo el equipo."
+    }
   ],
   "focus": {
     "title": "The two TH sounds: /θ/ and /ð/",
     "tip": "Para /θ/ (through, methodically) pon la punta de la lengua entre los dientes y sopla aire sin voz, como la 'z' de España. Para /ð/ (the, then, that) haz lo mismo pero haciendo vibrar la voz; no la conviertas en una 'd' dura.",
     "items": [
-      { "text": "through / true", "note": "/θru/ · tongue out, no voice" },
-      { "text": "then / den", "note": "/ðɛn/ · tongue out, with voice" },
-      { "text": "methodically", "note": "/məˈθɑdɪkli/ · soft TH, stress THA" },
-      { "text": "the network", "note": "/ðə ˈnɛtwɝk/ · quick voiced TH" },
-      { "text": "author", "note": "/ˈɔθɚ/ · TH, not T" },
-      { "text": "rather than", "note": "/ˈræðɚ ðæn/ · two voiced THs" }
+      {
+        "text": "through / true",
+        "note": "/θru/ · tongue out, no voice"
+      },
+      {
+        "text": "then / den",
+        "note": "/ðɛn/ · tongue out, with voice"
+      },
+      {
+        "text": "methodically",
+        "note": "/məˈθɑdɪkli/ · soft TH, stress THA"
+      },
+      {
+        "text": "the network",
+        "note": "/ðə ˈnɛtwɝk/ · quick voiced TH"
+      },
+      {
+        "text": "author",
+        "note": "/ˈɔθɚ/ · TH, not T"
+      },
+      {
+        "text": "rather than",
+        "note": "/ˈræðɚ ðæn/ · two voiced THs"
+      }
     ]
   },
   "drills": [
-    { "prompt": "The old report's behavior was so ____ that the monitoring tools ignored it.", "options": ["idiosyncratic", "tenable", "daunting", "meticulous"], "answer": "idiosyncratic", "why": "Idiosyncratic means peculiar to one thing, unlike anything else." },
-    { "prompt": "Keeping the slow report was no longer a ____ option for the business.", "options": ["cryptic", "tenable", "nuisance", "methodical"], "answer": "tenable", "why": "Tenable means it could still be defended or maintained." },
-    { "prompt": "The author left a ____ comment that nobody could fully understand.", "options": ["daunting", "tenable", "cryptic", "meticulous"], "answer": "cryptic", "why": "Cryptic means mysterious and hard to understand." },
-    { "prompt": "Rewriting a system you did not build can feel ____ at first.", "options": ["daunting", "idiosyncratic", "cryptic", "tenable"], "answer": "daunting", "why": "Daunting describes a task that looks hard enough to discourage you." }
+    {
+      "prompt": "The old report's behavior was so ____ that the monitoring tools ignored it.",
+      "options": [
+        "idiosyncratic",
+        "tenable",
+        "daunting",
+        "meticulous"
+      ],
+      "answer": "idiosyncratic",
+      "why": "Idiosyncratic means peculiar to one thing, unlike anything else.",
+      "whyEs": "«Idiosyncratic» es peculiar, muy propio de algo. Las demás no encajan: «tenable» es sostenible, «daunting» abrumador y «meticulous» meticuloso."
+    },
+    {
+      "prompt": "Keeping the slow report was no longer a ____ option for the business.",
+      "options": [
+        "cryptic",
+        "tenable",
+        "nuisance",
+        "methodical"
+      ],
+      "answer": "tenable",
+      "why": "Tenable means it could still be defended or maintained.",
+      "whyEs": "«A tenable option» es una opción que todavía se puede sostener. «No longer tenable» (ya no es sostenible) es una frase muy común."
+    },
+    {
+      "prompt": "The author left a ____ comment that nobody could fully understand.",
+      "options": [
+        "daunting",
+        "tenable",
+        "cryptic",
+        "meticulous"
+      ],
+      "answer": "cryptic",
+      "why": "Cryptic means mysterious and hard to understand.",
+      "whyEs": "«Cryptic» es críptico, difícil de entender: justo lo que es un comentario que nadie entiende del todo."
+    },
+    {
+      "prompt": "Rewriting a system you did not build can feel ____ at first.",
+      "options": [
+        "daunting",
+        "idiosyncratic",
+        "cryptic",
+        "tenable"
+      ],
+      "answer": "daunting",
+      "why": "Daunting describes a task that looks hard enough to discourage you.",
+      "whyEs": "«Daunting» es abrumador, que intimida antes de empezar: así se siente reescribir un sistema que no construiste."
+    }
   ],
-  "speak": "Describe a problem at work or at home that you solved by being patient and methodical. What did you learn from it?"
+  "speak": "Describe a problem at work or at home that you solved by being patient and methodical. What did you learn from it?",
+  "sentencesEs": [
+    "Todos los viernes por la tarde, nuestra página de pago se volvía lentísima, y nadie del equipo podía explicar por qué.",
+    "Al principio culpamos a la red, luego a la base de datos y, al final, al pobre practicante que había fusionado el último cambio.",
+    "Decidí abordar el problema de forma metódica en lugar de perseguir cada rumor que circulaba por el chat del equipo.",
+    "Después de comparar los logs de varias semanas, noté un patrón casi demasiado sutil para verlo.",
+    "Un reporte programado, escrito hace años por alguien que ya no estaba, se ejecutaba cada viernes y bloqueaba en silencio la tabla principal de pedidos.",
+    "Su comportamiento era tan peculiar que nuestras herramientas de monitoreo simplemente habían aprendido a ignorarlo.",
+    "El autor original había dejado un comentario críptico prometiendo arreglar la consulta más tarde, cosa que por supuesto nunca pasó.",
+    "Reescribir ese reporte se sentía abrumador, pero dejarlo como estaba ya no era una opción sostenible para el negocio.",
+    "Dividimos el trabajo en pasos pequeños y verificables y escribimos pruebas que reproducían la lentitud cuando queríamos.",
+    "Cuando salió el arreglo, las quejas de los viernes desaparecieron, y mi jefe admitió que la solución era sorprendentemente elegante.",
+    "Desde entonces, trato cada bug misterioso como un rompecabezas y no como una molestia, y documento mi razonamiento con muchísimo cuidado."
+  ],
+  "speakHelpEs": "Cuenta qué pasó, qué hiciste paso a paso y qué aprendiste. Frases útiles: «At first, I thought…» (Al principio pensé…), «It turned out that…» (Resultó que…), «Looking back, I realized…» (En retrospectiva, me di cuenta de que…)."
 }

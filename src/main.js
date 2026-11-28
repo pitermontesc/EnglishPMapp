@@ -24,6 +24,8 @@ import { pauseFactor as factorOf, takeProgress, silenceWait, createVoiceMeter, b
 
 const $ = (id) => document.getElementById(id);
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+// Explanations and translations in Spanish, marked as such for screen readers and the browser.
+function es(tag, cls, text) { const e = el(tag, "es " + (cls || ""), text); e.lang = "es"; return e; }
 const TODAY = dateKey(new Date());
 const PLATFORM = Capacitor.getPlatform(); // "web" or "ios" (the Mac app is the iOS build running on Apple Silicon)
 
@@ -236,7 +238,7 @@ function wireDictation() {
 // sentence becomes active. Hands-free keeps going; Listen first plays the model before each take.
 let active = 0;
 let flow = null, flowSeq = 0; // automated run: { id, kind: "read" | "play" }
-const prefs = { handsFree: true, listenFirst: false, slow: false };
+const prefs = { handsFree: true, listenFirst: false, slow: false, showEs: true };
 function rate() { return prefs.slow ? 0.75 : 1; }
 function items() { return $("sentences").children; }
 function count() { return (lesson && lesson.sentences || []).length; }
@@ -260,9 +262,10 @@ function renderLesson() {
       p.appendChild(sp);
     });
     const score = el("span", "chip score"); score.hidden = true; p.appendChild(score);
+    const tr = es("p", "sent-es", (lesson.sentencesEs || [])[idx] || ""); tr.hidden = !tr.textContent;
     const live = el("div", "sent-live"); live.setAttribute("aria-live", "polite");
     const actions = el("div", "sent-actions"); actions.hidden = true;
-    li.append(p, live, actions);
+    li.append(p, tr, live, actions);
     li._p = p; li._score = score; li._live = live; li._actions = actions;
     box.appendChild(li);
     const prev = session.reads[idx];
@@ -271,6 +274,8 @@ function renderLesson() {
   const firstUnread = (lesson.sentences || []).findIndex((_, i) => !session.reads[i]);
   select(firstUnread < 0 ? 0 : firstUnread, { scroll: false });
   $("speak-prompt").textContent = lesson.speak || "Retell today's story in your own words.";
+  $("speak-es").textContent = lesson.speakHelpEs || ""; $("speak-es").hidden = !lesson.speakHelpEs;
+  $("opt-es-wrap").hidden = !(lesson.sentencesEs && lesson.sentencesEs.length);
   $("speak-text").textContent = session.speak || "";
   $("speak-feedback").hidden = true;
   renderFocus(); renderVocab(); renderDrills(); renderFix(); updateAcc(); updateAIButtons();
@@ -441,10 +446,13 @@ function wireReader() {
   prefs.handsFree = getSetting("handsFree", true);
   prefs.listenFirst = getSetting("listenFirst", false);
   prefs.slow = getSetting("slow", false);
-  [["opt-handsfree", "handsFree"], ["opt-listenfirst", "listenFirst"], ["opt-slow", "slow"]].forEach(([id, key]) => {
+  prefs.showEs = getSetting("showEs", true);
+  const showEs = () => $("sentences").classList.toggle("show-es", prefs.showEs);
+  [["opt-handsfree", "handsFree"], ["opt-listenfirst", "listenFirst"], ["opt-slow", "slow"], ["opt-es", "showEs"]].forEach(([id, key]) => {
     const box = $(id); box.checked = prefs[key];
-    box.onchange = () => { prefs[key] = box.checked; setSettings({ [key]: box.checked }); };
+    box.onchange = () => { prefs[key] = box.checked; setSettings({ [key]: box.checked }); showEs(); };
   });
+  showEs();
   setButton($("r-prev"), "prev"); setButton($("r-next"), "next");
   setButton($("r-listen"), "speaker", "Listen");
   setReadButton("idle"); setPlayButton(false);
@@ -550,7 +558,15 @@ function wordRow(t) {
     if (c.say) row.appendChild(el("p", "small", "Suena como: " + c.say));
     if (c.tip) row.appendChild(el("p", "small", c.tip));
     if (c.pair) { const pr = el("div", "row small"); pr.appendChild(el("span", "hint", "Compare:")); String(c.pair).split(/\s*\/\s*/).forEach((w) => { const b = el("button", "", w); b.onclick = () => say(w, 0.8); pr.appendChild(b); }); row.appendChild(pr); }
-    if (c.examples && c.examples.length) { const ul = el("ul", "plain"); c.examples.forEach((x) => { const li = el("li", "ex", x); li.style.cursor = "pointer"; li.title = "Tap to listen"; li.onclick = () => say(x, 0.9); ul.appendChild(li); }); row.appendChild(ul); }
+    if (c.examples && c.examples.length) {
+      const ul = el("ul", "plain");
+      c.examples.forEach((x, i) => {
+        const li = el("li", "ex", x); li.style.cursor = "pointer"; li.title = "Tap to listen"; li.onclick = () => say(x, 0.9);
+        const tr = (c.examplesEs || [])[i]; if (tr) li.appendChild(es("span", "ex-es", tr));
+        ul.appendChild(li);
+      });
+      row.appendChild(ul);
+    }
   }
   return row;
 }
@@ -577,10 +593,11 @@ function coach() {
     '"say" (a respelling a Spanish speaker can read aloud, stressed syllable in CAPITALS, e.g. "i-LU-siv"), ' +
     '"tip" (2 short sentences IN SPANISH: the mistake Spanish speakers usually make with this word and what to do with mouth, stress or rhythm to fix it; use what was heard as a clue), ' +
     '"pair" (two English words separated by " / " that contrast the difficult sound, e.g. "ship / sheep"), ' +
-    '"examples" (array of 3 natural English sentences, C1 level, each using the word).\n' +
+    '"examples" (array of 3 natural English sentences, C1 level, each using the word), ' +
+    '"examplesEs" (array with the Latin American Spanish translation of each example, same order).\n' +
     'Example: {"focus":{"ipa":"/ˈfoʊkəs/","say":"FOU-kes","tip":"...","pair":"folk / fork","examples":["...","...","..."]}}';
   sample.askJSON(prompt, { effort: "low" }).then((out) => {
-    need.forEach((w) => { const c = out && out[w]; if (c && typeof c === "object") { troub[w].coach = { ipa: String(c.ipa || ""), say: String(c.say || ""), tip: String(c.tip || ""), pair: String(c.pair || ""), examples: Array.isArray(c.examples) ? c.examples.slice(0, 3).map(String) : [] }; saveWord(w); } });
+    need.forEach((w) => { const c = out && out[w]; if (c && typeof c === "object") { troub[w].coach = { ipa: String(c.ipa || ""), say: String(c.say || ""), tip: String(c.tip || ""), pair: String(c.pair || ""), examples: Array.isArray(c.examples) ? c.examples.slice(0, 3).map(String) : [], examplesEs: Array.isArray(c.examplesEs) ? c.examplesEs.slice(0, 3).map(String) : [] }; saveWord(w); } });
     renderFix(); renderHard(); renderProgress();
   }).catch((e) => {
     btn.textContent = "Coach me on these words"; btn.disabled = false;
@@ -602,8 +619,10 @@ function vocabCard(v, withGrade) {
   const body = el("div"); body.style.display = "flex"; body.style.flexDirection = "column"; body.style.gap = "6px";
   if (v.level || v.pos) body.appendChild(el("div", "row", "")).appendChild(el("span", "chip mark", [v.level, v.pos].filter(Boolean).join(" · ")));
   if (v.meaning) body.appendChild(el("div", "small", v.meaning));
-  if (v.es) body.appendChild(el("div", "small hint", "ES: " + v.es));
+  if (v.es) body.appendChild(es("div", "small", v.es));
+  if (v.noteEs) body.appendChild(es("div", "small", v.noteEs));
   if (v.example) body.appendChild(el("div", "ex small", v.example));
+  if (v.exampleEs) body.appendChild(es("div", "small hint", v.exampleEs));
   const ctl = el("div", "row");
   const b = el("button", "pill"); setButton(b, "speaker", "Listen"); b.onclick = () => say(v.word + ". " + (v.example || ""), 0.9); ctl.appendChild(b);
   if (withGrade) {
@@ -625,7 +644,7 @@ function seedVocab() {
   if (!lessonIsToday && lesson.source !== "bundled") return;
   (lesson.vocab || []).forEach((v) => {
     const id = docId(v.word); if (vocabDocs[id]) return;
-    const body = { word: String(v.word), ipa: String(v.ipa || ""), say: String(v.say || ""), meaning: String(v.meaning || ""), es: String(v.es || ""), example: String(v.example || ""), level: String(v.level || ""), pos: String(v.pos || ""), added: TODAY, due: addDays(TODAY, 1), step: 0 };
+    const body = { word: String(v.word), ipa: String(v.ipa || ""), say: String(v.say || ""), meaning: String(v.meaning || ""), es: String(v.es || ""), example: String(v.example || ""), noteEs: String(v.noteEs || ""), exampleEs: String(v.exampleEs || ""), level: String(v.level || ""), pos: String(v.pos || ""), added: TODAY, due: addDays(TODAY, 1), step: 0 };
     vocabDocs[id] = body; save("vocab", id, body);
   });
 }
@@ -649,6 +668,7 @@ function renderDrills() {
       const picked = session.drills[i]; if (picked == null) return;
       Array.from(opts.children).forEach((b) => { b.disabled = true; if (b.textContent === d.answer) b.classList.add("right"); else if (b.textContent === picked) b.classList.add("wrong"); });
       note.textContent = (picked === d.answer ? "Correct. " : "Not quite. ") + (d.why || "");
+      if (d.whyEs) note.appendChild(es("div", "", d.whyEs));
     }
     row.append(opts, note); box.appendChild(row); paint();
   });
@@ -673,11 +693,12 @@ function wireSpeak() {
     const out = $("speak-feedback"), b = $("speak-fb"); out.hidden = false; out.textContent = "Thinking…"; b.disabled = true;
     const prompt = "You are a native English teacher giving feedback to a Spanish-speaking adult aiming at C1/C2 speaking. " +
       "The question was: \"" + $("speak-prompt").textContent + "\"\nThis is a speech-recognition transcript of the learner's spoken answer (ignore missing punctuation):\n\"" + session.speak + "\"\n\n" +
-      "Write plain text, no markdown, at most 170 words, in this order:\n" +
+      "Write plain text, no markdown, at most 200 words, in this order:\n" +
       "1) One sentence on what they did well.\n" +
       "2) Corrections: up to 4 lines, each as: what they said -> a natural correction (brief reason in Spanish). Watch articles, third-person -s, tenses, prepositions and word order.\n" +
       "3) Upgrade: 2 phrases they used, each rewritten with a C1/C2 word or idiom.\n" +
-      "4) One sentence for them to repeat aloud now.";
+      "4) One sentence for them to repeat aloud now.\n" +
+      "5) One line in Spanish starting with \"Consejo:\" with the single most useful tip for next time, with a short English example.";
     sample.ask(prompt, { effort: "low", onText: (u) => { out.textContent = u.text; } })
       .then(() => { b.disabled = false; })
       .catch((e) => { out.textContent = aiError(e, "The feedback"); b.disabled = false; });
@@ -733,10 +754,12 @@ function makeLesson() {
     "Reply with only a JSON object with these fields:\n" +
     '"title": string; "level": "C1 + C2 words"; "topic": string;\n' +
     '"sentences": array of 9 to 11 sentences forming one story (12 to 22 words each);\n' +
-    '"vocab": array of 7 objects {"word","inStory" (exact form used in the story),"ipa" (General American, between slashes),"say" (respelling for Spanish speakers, stressed syllable in CAPITALS),"pos","level" ("C1" or "C2"),"meaning" (short English definition),"es" (Spanish translation),"example" (a new sentence)};\n' +
+    '"sentencesEs": array with a natural Latin American Spanish translation of each sentence, same order;\n' +
+    '"vocab": array of 7 objects {"word","inStory" (exact form used in the story),"ipa" (General American, between slashes),"say" (respelling for Spanish speakers, stressed syllable in CAPITALS),"pos","level" ("C1" or "C2"),"meaning" (short English definition),"es" (Spanish translation),"noteEs" (1 or 2 short sentences IN SPANISH on how the word is used: nuance, typical collocations, false friends or a pronunciation trap),"example" (a new sentence),"exampleEs" (its Spanish translation)};\n' +
     '"focus": {"title" (one pronunciation point present in the story),"tip" (2 sentences in Spanish),"items": array of 5 to 7 {"text" (word or minimal pair from the story),"note" (IPA and a 3 to 6 word cue)}};\n' +
-    '"drills": array of 4 {"prompt" (sentence with ____ for one vocab word),"options" (4 strings),"answer" (one of the options),"why" (one short sentence)};\n' +
-    '"speak": one open question related to the story.';
+    '"drills": array of 4 {"prompt" (sentence with ____ for one vocab word),"options" (4 strings),"answer" (one of the options),"why" (one short sentence),"whyEs" (one or two sentences IN SPANISH explaining the answer and why the other options do not fit)};\n' +
+    '"speak": one open question related to the story;\n' +
+    '"speakHelpEs": IN SPANISH, one sentence on how to structure the answer plus 3 useful English phrases, each followed by its Spanish meaning in parentheses.';
   sample.askJSON(prompt, { effort: "medium" }).then((L) => {
     if (!L || !Array.isArray(L.sentences) || !L.sentences.length) throw { code: "invalid_json" };
     L.date = TODAY; L.source = "app"; lesson = L; lessonIsToday = true; status("");
