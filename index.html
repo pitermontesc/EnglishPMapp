@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2046c7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Daily English">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="Daily English practice: read aloud, pronunciation, vocabulary and exercises.">
+<title>Daily English</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" href="./icons/favicon-32.png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <script type="module" crossorigin src="./assets/index-JOjc0WzU.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DkdSzWqA.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <header class="top">
+      <h1 class="brand">Daily English</h1>
+      <div class="meta"><span id="today-date"></span><span class="chip" id="streak">Streak 0 days</span></div>
+    </header>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#today" data-tab="today">Today</a>
+      <a href="#review" data-tab="review">Review</a>
+      <a href="#progress" data-tab="progress">Progress</a>
+      <a href="#settings" data-tab="settings">Settings</a>
+    </nav>
+  </div>
+  <div class="note" id="status" role="status" hidden>
+    <span id="status-text"></span>
+    <a id="status-action" hidden></a>
+    <button class="note-x" id="status-close" aria-label="Dismiss">×</button>
+  </div>
+
+  <section class="view" id="view-today">
+    <nav class="plan" id="plan" aria-label="Today's plan"></nav>
+    <div class="card story" id="story-card">
+      <div class="row" style="justify-content:space-between">
+        <h3 id="lesson-kicker">Today's story</h3>
+        <span class="chip" id="acc-chip">Not read yet</span>
+      </div>
+      <h2 id="lesson-title">Loading your lesson…</h2>
+      <div class="story-tools">
+        <p class="legend" id="story-legend" aria-label="Color key">
+          <span><i class="sw ok" aria-hidden="true">word</i>Understood</span>
+          <span><i class="sw miss" aria-hidden="true">word</i>Not understood</span>
+          <span><i class="sw vocab" aria-hidden="true">word</i>New word</span>
+        </p>
+        <div class="row">
+          <button id="make-lesson" class="primary pill" hidden>Create today's story</button>
+          <button class="pill" id="play-story"></button>
+        </div>
+      </div>
+      <ol class="sentences" id="sentences"></ol>
+
+      <div class="done" id="story-done" hidden>
+        <div class="done-score" id="done-score"></div>
+        <div class="done-body">
+          <p class="done-title" id="done-title">Story complete</p>
+          <p class="hint" id="done-text"></p>
+          <div class="row">
+            <button class="primary pill" id="done-fix">Practice the words to fix</button>
+            <button class="pill" id="done-again">Read it again</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="reader" id="reader" role="toolbar" aria-label="Reading controls">
+        <div class="reader-progress">
+          <span id="reader-pos">Sentence 1 of 1</span>
+          <div class="track" aria-hidden="true"><div class="fill" id="reader-fill"></div></div>
+        </div>
+        <div class="reader-main">
+          <button class="icon" id="r-prev" aria-label="Previous sentence"></button>
+          <button class="pill" id="r-listen"></button>
+          <button class="mic" id="r-read"></button>
+          <button class="icon" id="r-next" aria-label="Next sentence"></button>
+        </div>
+        <div class="reader-opts">
+          <label class="toggle" title="After each sentence, move to the next one and keep listening"><input type="checkbox" id="opt-handsfree"><span>Hands-free</span></label>
+          <label class="toggle" title="Play each sentence before you read it"><input type="checkbox" id="opt-listenfirst"><span>Listen first</span></label>
+          <label class="toggle" title="Play the model voice at three-quarter speed"><input type="checkbox" id="opt-slow"><span>Slow voice</span></label>
+          <label class="toggle" id="opt-es-wrap" title="Show the Spanish translation under the sentence you are reading"><input type="checkbox" id="opt-es"><span>Español</span></label>
+        </div>
+        <p class="reader-keys"><kbd>Space</kbd> read or stop · <kbd>←</kbd> <kbd>→</kbd> move · <kbd>L</kbd> listen</p>
+      </div>
+    </div>
+
+    <div class="card" id="fix-card" tabindex="-1">
+      <div class="row" style="justify-content:space-between">
+        <h3>Words to fix</h3>
+        <button id="coach-btn" class="primary pill" disabled>Coach me on these words</button>
+      </div>
+      <p class="hint" id="fix-empty">Words that were not understood while you read will appear here, with the sound, the usual mistake and examples.</p>
+      <div id="fix-list"></div>
+    </div>
+
+    <div class="card" id="focus-card" hidden>
+      <h3>Sound of the day</h3>
+      <h2 id="focus-title"></h2>
+      <p class="hint" id="focus-tip"></p>
+      <div class="grid" id="focus-items"></div>
+    </div>
+
+    <div class="card">
+      <h3>New words</h3>
+      <div class="grid" id="vocab"></div>
+    </div>
+
+    <div class="card" id="drill-card" tabindex="-1">
+      <div class="row" style="justify-content:space-between"><h3>Exercises</h3><span class="chip" id="drill-chip">0 answered</span></div>
+      <div id="drills"></div>
+    </div>
+
+    <div class="card" id="speak-card" tabindex="-1">
+      <h3>Speak freely</h3>
+      <p class="sent-text" id="speak-prompt"></p>
+      <p class="small es" id="speak-es" lang="es" hidden></p>
+      <p class="hint">Answer aloud for about a minute without reading. Then ask for feedback on grammar and word choice.</p>
+      <div class="row">
+        <button id="speak-rec">Start speaking</button>
+        <button id="speak-fb" class="primary" disabled>Get feedback</button>
+      </div>
+      <div class="live" id="speak-live"></div>
+      <div class="transcript" id="speak-text"></div>
+      <div class="feedback" id="speak-feedback" hidden></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-review">
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h3>Vocabulary due today</h3><span class="chip" id="due-chip">0 due</span></div>
+      <p class="hint" id="due-empty">Nothing is due. New words from each lesson come back after 1, 3, 7, 14 and 30 days.</p>
+      <div class="grid" id="due-list"></div>
+    </div>
+    <div class="card">
+      <h3>Your difficult words</h3>
+      <p class="hint" id="hard-empty">No difficult words yet. They are collected from your readings.</p>
+      <div id="hard-list"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-progress">
+    <div class="stats">
+      <div class="stat"><div class="n" id="st-streak">0</div><div class="l">day streak</div></div>
+      <div class="stat"><div class="n" id="st-days">0</div><div class="l">days practiced</div></div>
+      <div class="stat"><div class="n" id="st-acc">–</div><div class="l">average words understood</div></div>
+      <div class="stat"><div class="n" id="st-vocab">0</div><div class="l">words in review</div></div>
+    </div>
+    <div class="card">
+      <h3>Words understood per day</h3>
+      <p class="hint" id="bars-empty">Your daily results will appear here after your first reading.</p>
+      <div class="bars" id="bars"></div>
+    </div>
+    <div class="card">
+      <h3>Most missed words</h3>
+      <div class="scroll"><table><thead><tr><th>Word</th><th>Sound</th><th class="num">Missed</th><th class="num">Said well</th><th>Last</th></tr></thead><tbody id="miss-table"></tbody></table></div>
+    </div>
+  </section>
+  <section class="view" id="view-settings">
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h3>Claude</h3><span class="chip" id="ai-chip"></span></div>
+      <p class="hint">Daily stories, word coaching and speaking feedback are written by Claude with your own Anthropic API key. The key is saved only on this device. Create one at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
+      <label class="field"><span>API key</span><input type="password" id="set-key" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-ant-..."></label>
+      <label class="field"><span>Model</span><select id="set-model"></select></label>
+      <label class="check"><input type="checkbox" id="set-auto"> <span>Create today's story automatically when I open the app</span></label>
+      <div class="row"><button class="primary" id="set-save">Save</button><button id="set-test">Test connection</button></div>
+      <p class="small" id="set-msg" role="status"></p>
+    </div>
+    <div class="card">
+      <h3>Reading</h3>
+      <label class="field"><span>Pause before the microphone stops</span>
+        <select id="set-pause">
+          <option value="short">Short: stops quickly when you finish</option>
+          <option value="normal">Normal</option>
+          <option value="long">Long: waits more while you think (default)</option>
+        </select>
+      </label>
+      <p class="hint">If the microphone still cuts you off, keep Long and press Stop yourself when you finish.</p>
+      <label class="check"><input type="checkbox" id="set-expect"> <span>Tell the recognizer which words to expect (Mac app)</span></label>
+      <p class="hint">On: words said softly, like the last one in a sentence, are recognized more easily. Off: stricter, so small pronunciation slips show up in red.</p>
+    </div>
+    <div class="card">
+      <h3>Your data</h3>
+      <p class="hint">Lessons and progress are saved on this device. To continue on another device, export a backup here and import it there.</p>
+      <div class="row"><button id="exp-btn">Export backup</button><button id="imp-btn">Import backup</button><input type="file" id="imp-file" accept="application/json,.json" hidden></div>
+      <p class="small" id="data-msg" role="status"></p>
+    </div>
+    <div class="card">
+      <h3>This device</h3>
+      <ul class="plain small" id="dev-info"></ul>
+      <details class="trouble">
+        <summary>Troubleshooting: microphone log</summary>
+        <p class="hint">If the microphone cuts you off, read the sentence once more, then come back here and press Copy log. It lists what the recognizer did during your last readings (no audio) and stays on this device.</p>
+        <div class="row"><button id="log-copy">Copy log</button></div>
+        <p class="small" id="log-msg" role="status"></p>
+        <textarea id="log-text" class="log" readonly rows="8" hidden aria-label="Microphone log"></textarea>
+      </details>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
